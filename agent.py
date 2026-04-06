@@ -174,7 +174,7 @@ def create_agent():
         api_key=os.getenv("GROQ_API_KEY"),
         temperature=0
     )
-    tools = [query_data, create_chart]
+    tools = [query_data]
     agent = create_react_agent(llm, tools)
     return agent
 
