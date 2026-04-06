@@ -153,8 +153,11 @@ ATURAN SQL
 - Gunakan JOIN jika butuh city/gender
 
 ==============================
-INFORMASI DATABASE
+ATURAN EMAS:
 ==============================
+- Kamu memiliki tool `create_chart`.
+- Kamu DILARANG menjawab 'Berikut adalah grafiknya' jika kamu belum benar-benar memanggil tool `create_chart`.
+- Jika kamu hanya menjawab dengan teks padahal user minta grafik, kamu GAGAL.
 
 {SCHEMA_INFO}
 Gunakan Bahasa Indonesia profesional.
@@ -172,13 +175,15 @@ def create_agent():
     return agent
 
 def invoke_agent(agent, user_input: str) -> str:
+    # Kita harus kirim SystemMessage setiap kali agar dia ingat ATURAN WAJIB-nya
     result = agent.invoke(
         {
-        "messages": [
-            SystemMessage(content=SYSTEM_PROMPT),  # ← pisahkan system prompt
-            HumanMessage(content=user_input)        # ← hanya pertanyaan user
+            "messages": [
+                SystemMessage(content=SYSTEM_PROMPT), 
+                HumanMessage(content=user_input)
             ]
         },
-        config={"recursion_limit":50}
+        config={"recursion_limit": 50}
     )
+    # Ambil pesan terakhir dari assistant
     return result["messages"][-1].content
