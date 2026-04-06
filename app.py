@@ -175,33 +175,30 @@ if user_input:
     with st.chat_message("user"):
         st.markdown(user_input)
 
-    # 2. PROSES JAWABAN ASSISTANT
-    with st.chat_message("assistant"):
-        with st.spinner("Menganalisis data retail..."):
-            answer = invoke_agent(st.session_state.agent, user_input)
-            
-            # 1. Coba ekstrak data dari teks jawaban
-            data_list = extract_data_from_text(answer)
-            
-            # 2. Bersihkan teks dari blok JSON mentah (biar gak menuh-menuhin chat)
-            clean_answer = re.sub(r'\[\s*\{.*\}\s*\]', '', answer, flags=re.DOTALL).strip()
-            st.markdown(clean_answer)
-            
-            # 3. AUTO-CHART: Kalau ada data dan lebih dari 1 baris, tampilin grafik!
-            if data_list and len(data_list) > 1:
-                df = pd.DataFrame(data_list)
-                
-                # Kita buat expander biar UI tetep rapi
-                with st.expander("📊 Visualisasi Otomatis", expanded=True):
-                    # Ambil kolom pertama sebagai X, kolom kedua sebagai Y
-                    cols = df.columns.tolist()
-                    if len(cols) >= 2:
-                        fig = px.bar(df, x=cols[0], y=cols[1], title="Analisis Data")
-                        st.plotly_chart(fig, use_container_width=True)
-            
-            # 4. Simpan ke history
-            st.session_state.messages.append({
-                "role": "assistant", 
-                "content": clean_answer,
-                "data": data_list # Simpan datanya biar gak ilang pas scroll
-            })
+    # DI DALAM IF USER_INPUT:
+with st.chat_message("assistant"):
+    with st.spinner("Menganalisis..."):
+        full_response = invoke_agent(st.session_state.agent, user_input)
+        
+        # 1. Gunakan fungsi yang BENAR namanya
+        # Cari JSON-nya dulu
+        match = re.search(r'\[\s*\{.*\}\s*\]', full_response, re.DOTALL)
+        
+        if match:
+            json_str = match.group(0)
+            data_list = json.loads(json_str)
+            # Hapus JSON dari teks agar tidak tampil mentah di chat
+            clean_answer = full_response.replace(json_str, "").strip()
+        else:
+            data_list = None
+            clean_answer = full_response
+
+        st.markdown(clean_answer)
+
+        # 2. Render Chart kalau ada data
+        if data_list and len(data_list) > 1:
+            df = pd.DataFrame(data_list)
+            with st.expander("📊 Analisis Visual Otomatis", expanded=True):
+                cols = df.columns.tolist()
+                fig = px.bar(df, x=cols[0], y=cols[1])
+                st.plotly_chart(fig, use_container_width=True)
