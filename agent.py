@@ -89,20 +89,19 @@ def query_data(sql: str) -> str:
 @tool
 def create_chart(data_json: str, chart_type: str, title: str, x_col: str, y_col: str) -> str:
     """Gunakan tool ini untuk visualisasi setelah data didapat."""
-    # Di dalam tool create_chart di agent.py
     try:
-        df = run_sql(sql)
+        # Parse JSON hasil dari query_data
+        df = pd.read_json(data_json)
+
         if df.empty:
             return "Tidak ada data untuk divisualisasikan."
 
-        # Pastikan data yang dikirim ke UI hanya kolom yang dibutuhkan
-        # dan diconvert ke list of dict yang bersih
         clean_data = df.to_dict(orient="records")
 
         chart_data = {
             "type": chart_type,
             "title": title,
-            "columns": [x_col, y_col], # Ini yang dicari app.py
+            "columns": [x_col, y_col],
             "data": clean_data
         }
 
@@ -160,7 +159,12 @@ ATURAN VISUALISASI:
 CONTOH RESPON JIKA USER MINTA GRAFIK:
 1. Action: query_data(sql="SELECT city, count(*) FROM customers GROUP BY city")
 2. Observation: [JSON data]
-3. Action: create_chart(sql="SELECT city, count(*) FROM customers GROUP BY city", chart_type="bar", title="Pelanggan per Kota", x_col="city", y_col="count(*)")
+3. Action: create_chart(
+   data_json='[JSON DARI query_data]',
+   chart_type='bar',
+   title='Pelanggan per Kota',
+   x_col='city',
+   y_col='jumlah')
 4. Final Answer: Berikut adalah grafik sebaran pelanggan Anda...
 """
 load_dotenv()
