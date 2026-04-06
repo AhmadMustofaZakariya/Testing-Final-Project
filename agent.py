@@ -39,8 +39,9 @@ Database memiliki 3 tabel berikut:
    - churn_probability: nilai 0.0 - 1.0
    - Tabel ini adalah hasil prediksi ML dari pipeline Airflow
 
-Untuk analisis churn dan retensi, selalu gunakan tabel predictions.
-Untuk data demografis, JOIN dengan tabel customers.
+Untuk analisis churn, retensi dan untuk pertanyaan tentang 'Risk' atau 'Segment', WAJIB pakai tabel `predictions`.
+Untuk data demografis, Jika butuh 'City' atau 'Gender' saat analisa churn, lakukan JOIN: 
+`FROM predictions p JOIN customers c ON p.customer_id = c.customer_id` dengan tabel customers.
 Untuk data transaksi, JOIN dengan tabel transactions.
 """
 
@@ -71,12 +72,12 @@ def query_data(sql: str) -> str:
     try:
         df = run_sql(sql)
         if df.empty:
-            return "Query berhasil tapi tidak ada data yang ditemukan."
-        # Kembalikan max 20 baris supaya tidak membanjiri context LLM
-        result = df.head(20).to_string(index=False)
-        return f"Hasil query ({len(df)} baris total):\n{result}"
+            return "Hasil query kosong. Coba cek filter WHERE kamu, mungkin terlalu ketat."
+        # Kembalikan dalam format JSON string agar bisa dibaca tool create_chart
+        return df.to_json(orient="records")
     except Exception as e:
-        return f"Error saat menjalankan query: {str(e)}"
+        # Jika error, kirim pesan error SQL-nya ke LLM agar dia bisa benerin query-nya
+        return f"SQL Error: {str(e)}. Tolong periksa nama kolom atau syntax JOIN kamu."
 
 
 # -------------------------------------------------------
@@ -86,57 +87,33 @@ def query_data(sql: str) -> str:
 # data yang sudah ada.
 # -------------------------------------------------------
 @tool
-def create_chart(sql: str, chart_type: str, title: str, x_col: str, y_col: str) -> str:
-    """Gunakan tool ini HANYA ketika user meminta grafik,
-    chart, atau visualisasi. Tool ini akan menjalankan SQL
-    dan membuat chart dari hasilnya.
-
-    Parameter:
-    - sql       : SQL query untuk ambil data chart (kamu yang generate)
-    - chart_type: jenis chart, pilih salah satu: 'bar', 'pie', 'line', 'scatter'
-    - title     : judul chart yang deskriptif
-    - x_col     : nama kolom untuk sumbu X (atau label pie)
-    - y_col     : nama kolom untuk sumbu Y (atau nilai pie)
-
-    Contoh penggunaan:
-    sql="SELECT churn_label, COUNT(*) as jumlah FROM predictions GROUP BY churn_label",
-    chart_type="bar", title="Distribusi Churn Risk", x_col="churn_label", y_col="jumlah"
-    """
+def create_chart(data_json: str, chart_type: str, title: str, x_col: str, y_col: str) -> str:
+    """Gunakan tool ini untuk visualisasi setelah data didapat."""
     try:
-        df = run_sql(sql)
-        if df.empty:
-            return "Tidak ada data untuk divisualisasikan."
-
-        # Validasi kolom yang diminta LLM ada di hasil query
-        if x_col not in df.columns or y_col not in df.columns:
-            available = ", ".join(df.columns.tolist())
-            return f"Kolom tidak ditemukan. Kolom tersedia: {available}"
-
+        import json
+        import streamlit as st
+        
+        # 1. Ubah string JSON dari query_data menjadi list of dict
+        data = json.loads(data_json)
+        
+        # 2. SUSUN OBJEKNYA DI SINI
+        # Ini adalah 'paket' yang akan dibaca oleh fungsi render_chart di app.py
         chart_data = {
-            "type"   : chart_type,
-            "title"  : title,
-            "x_col"  : x_col,
-            "y_col"  : y_col,
-            "data"   : df[[x_col, y_col]].to_dict(orient="records"),
-            "columns": [x_col, y_col]
+            "type": chart_type,
+            "title": title,
+            "x_col": x_col,
+            "y_col": y_col,
+            "columns": [x_col, y_col], # Penting agar app.py tidak error
+            "data": data
         }
 
-        # Simpan ke Streamlit session_state — lebih reliable dari file JSON
-        try:
-            import streamlit as st
-            st.session_state.pending_chart = chart_data
-        except Exception:
-            # Fallback jika tidak ada Streamlit context (misal test di terminal)
-            import json, tempfile, os
-            path = os.path.join(tempfile.gettempdir(), "chart_data.json")
-            with open(path, "w") as f:
-                json.dump(chart_data, f)
-
-        return f"CHART_READY:{title}"
-
+        # 3. Simpan ke session_state agar bisa ditangkap oleh app.py
+        st.session_state.pending_chart = chart_data
+        
+        return f"CHART_READY:{title}" # Sinyal untuk app.py bahwa chart sudah siap
+        
     except Exception as e:
-        return f"Error membuat chart: {str(e)}"
-
+        return f"Error saat menyiapkan chart: {str(e)}"
 
 # -------------------------------------------------------
 # SETUP AGENT
@@ -145,19 +122,41 @@ SYSTEM_PROMPT = f"""Kamu adalah AI Retail Analyst untuk perusahaan e-commerce.
 Tugasmu membantu stakeholder (CMO, CEO) memahami data pelanggan,
 terutama terkait churn dan retensi pelanggan.
 
+Jika user meminta grafik/visualisasi, kamu wajib menjalankan dua langkah: (1) Ambil data dengan query_data, 
+lalu (2) Gunakan hasil JSON dari data tersebut sebagai input untuk create_chart. Jangan berhenti sebelum memanggil create_chart.
+
+Jangan pernah mengambil data mentah ribuan baris untuk grafik. 
+Gunakan GROUP BY di SQL agar data yang dikirim ke tool visualisasi sudah ringkas.
+
 {SCHEMA_INFO}
 
-ATURAN WAJIB — HARUS DIIKUTI:
-1. SELALU gunakan tool query_data untuk mengambil data dari database
-2. Jika user menyebut kata "grafik", "chart", "visualisasi", "diagram", 
-   atau "tampilkan" → WAJIB panggil tool create_chart, JANGAN jawab dengan teks saja
-3. Urutan WAJIB jika diminta grafik:
-   a. Panggil query_data untuk ambil data
-   b. Panggil create_chart dengan data tersebut
-   c. Baru tulis interpretasi bisnis
-4. DILARANG membuat grafik hanya dengan teks atau angka saja
-5. Jawab dalam Bahasa Indonesia yang mudah dipahami non-teknis
-6. Jangan tampilkan SQL query mentah ke user
+URUTAN KERJA (WAJIB):
+1. Jika user bertanya tentang data/statistik, panggil tool `query_data`.
+2. Jika user meminta "grafik", "visualisasi", "tampilkan", atau "diagram":
+   - LANGKAH A: Panggil `query_data` untuk mendapatkan data mentah (format JSON).
+   - LANGKAH B: Ambil OUTPUT JSON dari langkah A, lalu panggil `create_chart` menggunakan data tersebut.
+   - LANGKAH C: Berikan interpretasi bisnis singkat berdasarkan grafik yang muncul.
+
+ATURAN KETAT:
+- JANGAN pernah memberikan data angka saja jika user meminta grafik.
+- Tool `create_chart` MEMBUTUHKAN data JSON dari `query_data`. Jangan mengarang data.
+- Gunakan Bahasa Indonesia yang profesional namun mudah dimengerti.
+- Jangan tampilkan query SQL mentah kepada user kecuali diminta untuk debugging.
+- Jika data dari `query_data` kosong, beritahu user dan jangan panggil `create_chart`.
+
+CONTOH ALUR:
+User: "Tampilkan grafik komposisi segmen retensi."
+Assistant: 
+1. Call `query_data(sql="SELECT retention_segment, COUNT(*) as jumlah FROM predictions GROUP BY retention_segment")`
+2. (Terima JSON data)
+3. Call `create_chart(data_json='...', chart_type='pie', title='Komposisi Segmen Retensi', x_col='retention_segment', y_col='jumlah')`
+4. Response: "Berikut adalah grafik komposisi segmen pelanggan Anda..."
+
+ATURAN VISUALISASI:
+- Bar Chart: Gunakan untuk perbandingan kategori (contoh: Churn per Kota, Total Transaksi per Kategori).
+- Pie Chart: Gunakan HANYA untuk melihat komposisi/proporsi yang totalnya 100% (contoh: Persentase Segmen Retensi, Proporsi Gender).
+- Line Chart: WAJIB gunakan jika ada kolom waktu/tanggal (order_date) untuk melihat tren.
+- Scatter Plot: Gunakan untuk melihat korelasi antara dua angka (contoh: Churn Probability vs Total Spend).
 """
 load_dotenv()
 
@@ -172,10 +171,13 @@ def create_agent():
     return agent
 
 def invoke_agent(agent, user_input: str) -> str:
-    result = agent.invoke({
+    result = agent.invoke(
+        {
         "messages": [
             SystemMessage(content=SYSTEM_PROMPT),  # ← pisahkan system prompt
             HumanMessage(content=user_input)        # ← hanya pertanyaan user
-        ]
-    })
+            ]
+        },
+        config={"recursion_limit":50}
+    )
     return result["messages"][-1].content

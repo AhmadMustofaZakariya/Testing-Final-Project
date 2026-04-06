@@ -29,24 +29,32 @@ st.set_page_config(
 # Didefinisikan PALING ATAS supaya bisa dipanggil di mana saja
 # -------------------------------------------------------
 def render_chart(chart_data: dict):
-    df  = pd.DataFrame(chart_data["data"])
-    cols  = chart_data["columns"]
+    df = pd.DataFrame(chart_data["data"])
+    cols = chart_data["columns"]
     title = chart_data["title"]
     ctype = chart_data.get("type", "bar")
 
+    # Pastikan data angka benar-benar bertipe numeric agar grafik tidak berantakan
+    if len(cols) > 1:
+        df[cols[1]] = pd.to_numeric(df[cols[1]], errors='coerce')
+
     if ctype == "pie":
         fig = px.pie(df, names=cols[0], values=cols[1], title=title,
-                     color_discrete_sequence=px.colors.qualitative.Set2)
+                     hole=0.4, # Bikin jadi Donut Chart agar lebih modern
+                     color_discrete_sequence=px.colors.qualitative.Pastel)
     elif ctype == "line":
-        fig = px.line(df, x=cols[0], y=cols[1], title=title)
+        fig = px.line(df, x=cols[0], y=cols[1], title=title, markers=True)
     elif ctype == "scatter":
-        fig = px.scatter(df, x=cols[0], y=cols[1], title=title)
+        fig = px.scatter(df, x=cols[0], y=cols[1], title=title, 
+                         trendline="ols") # Tambahkan garis tren otomatis
     else:
+        # Sort data agar Bar Chart rapi dari terbesar ke terkecil
+        df = df.sort_values(by=cols[1], ascending=False)
         fig = px.bar(df, x=cols[0], y=cols[1], title=title,
-                     color=cols[0],
-                     color_discrete_sequence=px.colors.qualitative.Set2)
+                     color=cols[1], # Warna gradasi berdasarkan nilai
+                     color_continuous_scale='Viridis')
 
-    fig.update_layout(height=400)
+    fig.update_layout(hovermode="x unified", template="plotly_white")
     st.plotly_chart(fig, use_container_width=True)
 
 
@@ -122,44 +130,52 @@ if "pending_question" in st.session_state:
 # PROCESS
 # -------------------------------------------------------
 if user_input:
-    if not st.session_state.agent:
-        st.warning("Agent belum siap, cek API key.")
-    else:
-        st.session_state.messages.append({"role": "user", "content": user_input})
-        with st.chat_message("user"):
-            st.markdown(user_input)
+    # ... (kode lama: simpan user message) ...
 
-        with st.chat_message("assistant"):
-            with st.spinner("Menganalisis..."):
-                try:
-                    answer = invoke_agent(st.session_state.agent, user_input)
-                    # Tambahkan sementara setelah baris answer = invoke_agent(...)
-                    st.write(f"DEBUG answer: `{answer}`")  # lihat isi jawaban mentah
-                    st.write(f"DEBUG pending_chart: `{st.session_state.get('pending_chart')}`")
+    with st.chat_message("assistant"):
+        with st.spinner("Menganalisis..."):
+            try:
+                # PENTING: Reset pending_chart sebelum invoke agar tidak terbawa dari chat sebelumnya
+                st.session_state.pending_chart = None 
+                
+                answer = invoke_agent(st.session_state.agent, user_input)
+                
+                # Ambil data chart yang baru saja diisi oleh tool di agent.py
+                chart_data = st.session_state.get("pending_chart")
 
-                    # Ambil chart dari session_state (disimpan oleh agent.py)
-                    chart_data = None
-                    if "CHART_READY:" in answer:
-                        chart_data = st.session_state.get("pending_chart")
-                        if chart_data:
-                            answer = answer.replace(
-                                f"CHART_READY:{chart_data['title']}", ""
-                            ).strip()
-                            st.session_state.pending_chart = None
+                # Bersihkan pesan "CHART_READY" atau "SUCCESS" dari teks agar tidak terlihat user
+                clean_answer = answer
+                if "CHART_READY:" in answer:
+                     # Kita hapus string penanda agar chat tetap bersih
+                     import re
+                     clean_answer = re.sub(r"CHART_READY:.*", "", answer).strip()
+                elif "SUCCESS: Grafik" in answer:
+                     clean_answer = re.sub(r"SUCCESS: Grafik.*", "", answer).strip()
 
-                    st.markdown(answer)
-                    if chart_data:
-                        render_chart(chart_data)
+                # Tampilkan Teks
+                st.markdown(clean_answer)
 
-                    # Simpan ke history
-                    saved = {"role": "assistant", "content": answer}
-                    if chart_data:
-                        saved["chart"] = chart_data
-                    st.session_state.messages.append(saved)
+                # Tampilkan Chart jika ada
+                if chart_data:
+                    render_chart(chart_data)
+                    # Simpan ke history dengan data chart-nya
+                    st.session_state.messages.append({
+                        "role": "assistant", 
+                        "content": clean_answer, 
+                        "chart": chart_data
+                    })
+                else:
+                    st.session_state.messages.append({
+                        "role": "assistant", 
+                        "content": clean_answer
+                    })
+                
+                # Reset setelah diproses
+                st.session_state.pending_chart = None
 
-                except Exception as e:
-                    err = f"Terjadi error: {str(e)}"
-                    st.error(err)
-                    st.session_state.messages.append(
-                        {"role": "assistant", "content": err}
-                    )
+            except Exception as e:
+                err = f"Terjadi error: {str(e)}"
+                st.error(err)
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": err}
+                )
