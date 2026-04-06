@@ -133,6 +133,9 @@ if user_input:
             with st.spinner("Menganalisis..."):
                 try:
                     answer = invoke_agent(st.session_state.agent, user_input)
+                    # Tambahkan sementara setelah baris answer = invoke_agent(...)
+                    st.write(f"DEBUG answer: `{answer}`")  # lihat isi jawaban mentah
+                    st.write(f"DEBUG pending_chart: `{st.session_state.get('pending_chart')}`")
 
                     # Ambil chart dari session_state (disimpan oleh agent.py)
                     chart_data = None
