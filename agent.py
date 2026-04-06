@@ -170,7 +170,7 @@ def create_agent():
         temperature=0
     )
     tools = [query_data, create_chart]
-    agent = create_react_agent(llm, tools, prompt=SYSTEM_PROMPT)
+    agent = create_react_agent(llm, tools)
     return agent
 
 def invoke_agent(agent, user_input: str) -> str:
