@@ -1,7 +1,7 @@
 langchain
 langchain-google-genai
 langchain-community
-langgraph
+langgraph==0.2.55
 sqlalchemy
 psycopg2-binary
 pandas

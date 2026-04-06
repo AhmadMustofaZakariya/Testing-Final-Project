@@ -158,23 +158,23 @@ load_dotenv()
 
 def create_agent():
     llm = ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash",
+        model="gemini-1.5-flash",
         google_api_key=os.getenv("GEMINI_API_KEY"),
         temperature=0,
         convert_system_message_to_human=True
     )
     tools = [query_data, create_chart]
-
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", SYSTEM_PROMPT),
-        MessagesPlaceholder(variable_name="messages"),
-    ])
-
-    agent = create_react_agent(llm, tools, prompt=prompt)
+    
+    # Hapus prompt parameter, tidak didukung versi ini
+    agent = create_react_agent(llm, tools)
     return agent
 
 def invoke_agent(agent, user_input: str) -> str:
+    full_input = f"""{SYSTEM_PROMPT}
+
+Pertanyaan user: {user_input}"""
+    
     result = agent.invoke({
-        "messages": [{"role": "user", "content": user_input}]
+        "messages": [{"role": "user", "content": full_input}]
     })
     return result["messages"][-1].content
