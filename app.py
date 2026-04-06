@@ -29,6 +29,11 @@ st.set_page_config(
 # Didefinisikan PALING ATAS supaya bisa dipanggil di mana saja
 # -------------------------------------------------------
 def render_chart(chart_data: dict):
+    # Tambahkan baris proteksi ini
+    if chart_data is None or "data" not in chart_data:
+        st.warning("Data grafik tidak tersedia atau format salah.")
+        return
+    
     df = pd.DataFrame(chart_data["data"])
     cols = chart_data["columns"]
     title = chart_data["title"]

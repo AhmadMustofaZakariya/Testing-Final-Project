@@ -103,8 +103,8 @@ def create_chart(data_json: str, chart_type: str, title: str, x_col: str, y_col:
             "title": title,
             "x_col": x_col,
             "y_col": y_col,
-            "columns": [x_col, y_col], # Penting agar app.py tidak error
-            "data": data
+            "data": df[[x_col, y_col]].to_dict(orient="records"), # Pastikan ini ada
+            "columns": [x_col, y_col] # Pastikan ini ada
         }
 
         # 3. Simpan ke session_state agar bisa ditangkap oleh app.py
