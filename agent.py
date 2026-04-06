@@ -88,29 +88,35 @@ def query_data(sql: str) -> str:
 # -------------------------------------------------------
 @tool
 def create_chart(data_json: str, chart_type: str, title: str, x_col: str, y_col: str) -> str:
-    """Gunakan tool ini untuk visualisasi setelah data didapat."""
     try:
-        # Parse JSON hasil dari query_data
-        df = pd.read_json(data_json)
+        import json
+        import streamlit as st
+        
+        # Bersihkan kemungkinan markdown wrapping
+        data_json = data_json.strip()
+        data_json = data_json.replace("```json", "").replace("```", "").strip()
+
+        # Parse JSON dengan json.loads dulu (lebih aman)
+        data = json.loads(data_json)
+
+        df = pd.DataFrame(data)
 
         if df.empty:
             return "Tidak ada data untuk divisualisasikan."
-
-        clean_data = df.to_dict(orient="records")
 
         chart_data = {
             "type": chart_type,
             "title": title,
             "columns": [x_col, y_col],
-            "data": clean_data
+            "data": df.to_dict(orient="records")
         }
 
-        import streamlit as st
         st.session_state.pending_chart = chart_data
         
         return f"CHART_READY:{title}"
-        
+
     except Exception as e:
+        print("DEBUG DATA_JSON:", data_json)
         return f"Error saat menyiapkan chart: {str(e)}"
 
 # -------------------------------------------------------
