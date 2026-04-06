@@ -158,14 +158,15 @@ if user_input:
             chart_data = st.session_state.get("pending_chart")
             
             # Bersihkan teks respons
-            clean_answer = full_response.replace("CHART_READY:", "").strip()
-            if chart_data:
-                clean_answer = clean_answer.replace(chart_data['title'], "").strip()
+            clean_answer = full_response
+            if "CHART_READY:" in full_response:
+                clean_answer = full_response.split("CHART_READY:")[0].strip()
 
             st.markdown(clean_answer)
             
             if chart_data:
                 render_chart(chart_data)
+                st.session_state.pending_chart = None
                 
             # 3. Simpan ke history
             st.session_state.messages.append({

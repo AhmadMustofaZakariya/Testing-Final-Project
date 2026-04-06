@@ -90,33 +90,28 @@ def query_data(sql: str) -> str:
 @tool
 def create_chart(data_json: str, chart_type: str, title: str, x_col: str, y_col: str) -> str:
     """
-    WAJIB dipanggil untuk membuat visualisasi. 
-    data_json: Hasil string JSON dari query_data.
+    Wajib dipanggil untuk menampilkan grafik.
+    data_json: string JSON dari hasil query_data.
     chart_type: 'bar', 'pie', 'line', atau 'scatter'.
-    title: Judul grafik.
-    x_col: Nama kolom untuk sumbu X.
-    y_col: Nama kolom untuk sumbu Y.
+    title: judul grafik.
+    x_col: nama kolom sumbu X.
+    y_col: nama kolom sumbu Y.
     """
     try:
-        import json
         import streamlit as st
-        
-        # Parse data JSON yang dikirim dari query_data
+        # Parse data JSON
         data = json.loads(data_json)
         
-        # Simpan ke session_state agar dibaca app.py
-        chart_data = {
+        # Simpan ke session_state dengan struktur yang diharapkan app.py
+        st.session_state.pending_chart = {
             "type": chart_type,
             "title": title,
             "columns": [x_col, y_col],
             "data": data
         }
-
-        st.session_state.pending_chart = chart_data
         return f"CHART_READY:{title}"
-
     except Exception as e:
-        return f"Error saat menyiapkan chart: {str(e)}"
+        return f"Gagal menyiapkan chart: {str(e)}"
 
 # -------------------------------------------------------
 # SETUP AGENT
