@@ -176,7 +176,7 @@ def create_agent():
 def invoke_agent(agent, user_input: str) -> str:
     """Helper untuk invoke agent dan ambil response terakhir."""
     result = agent.invoke({
-        "messages": [HumanMessage(content=user_input)]
+        "messages": [{"role": "user", "content": user_input}]  # ganti format ini
     })
     # Ambil pesan terakhir dari agent
     return result["messages"][-1].content
