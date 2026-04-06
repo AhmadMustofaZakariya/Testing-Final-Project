@@ -67,16 +67,30 @@ def render_chart(chart_data: dict):
     st.plotly_chart(fig, use_container_width=True)
 
 # HELPER: Fungsi untuk mencari JSON di dalam teks jawaban LLM
-def extract_data_from_text(text):
+import re
+import json
+import pandas as pd
+import plotly.express as px
+
+def extract_and_render_data(text):
     try:
-        # Cari pola [ { ... } ] di dalam teks
+        # Mencari pola JSON [ { ... } ] di dalam teks jawaban AI
         match = re.search(r'\[\s*\{.*\}\s*\]', text, re.DOTALL)
         if match:
-            json_str = match.group(0)
-            return json.loads(json_str)
-    except:
-        return None
-    return None
+            json_data = json.loads(match.group(0))
+            df = pd.DataFrame(json_data)
+            
+            if len(df) > 1: # Hanya tampilkan chart jika data lebih dari 1 baris
+                with st.expander("📊 Analisis Visual Otomatis", expanded=True):
+                    cols = df.columns.tolist()
+                    # Ambil kolom pertama sebagai X (biasanya kategori/label)
+                    # Ambil kolom kedua sebagai Y (biasanya nilai/jumlah)
+                    fig = px.bar(df, x=cols[0], y=cols[1], title=f"Grafik {cols[1]} per {cols[0]}")
+                    st.plotly_chart(fig, use_container_width=True)
+            return True
+    except Exception as e:
+        return False
+    return False
 
 # -------------------------------------------------------
 # INIT DB
