@@ -174,11 +174,10 @@ def create_agent():
     return agent
 
 def invoke_agent(agent, user_input: str) -> str:
-    full_input = f"""{SYSTEM_PROMPT}
-
-    Pertanyaan user: {user_input}"""
-
     result = agent.invoke({
-        "messages": [HumanMessage(content=full_input)]  # ← full_input bukan user_input
+        "messages": [
+            SystemMessage(content=SYSTEM_PROMPT),  # ← pisahkan system prompt
+            HumanMessage(content=user_input)        # ← hanya pertanyaan user
+        ]
     })
     return result["messages"][-1].content
