@@ -29,13 +29,14 @@ st.set_page_config(
 # Didefinisikan PALING ATAS supaya bisa dipanggil di mana saja
 # -------------------------------------------------------
 def render_chart(chart_data: dict):
-    # Tambahkan baris proteksi ini
-    if chart_data is None or "data" not in chart_data:
-        st.warning("Data grafik tidak tersedia atau format salah.")
-        return
-    
+    # Validasi ketat
+    if not chart_data or "data" not in chart_data or "columns" not in chart_data:
+        return # Diam saja, jangan tampilkan warning agar UI tidak kotor
+
     df = pd.DataFrame(chart_data["data"])
     cols = chart_data["columns"]
+    # Kadang kolom sumbu Y (angka) terbaca sebagai string, kita paksa jadi numeric
+    df[cols[1]] = pd.to_numeric(df[cols[1]], errors='coerce')
     title = chart_data["title"]
     ctype = chart_data.get("type", "bar")
 
@@ -82,6 +83,11 @@ if "pending_chart" not in st.session_state:
 # -------------------------------------------------------
 # SIDEBAR
 # -------------------------------------------------------
+if st.button("Reset Chat"):
+    st.session_state.messages = []
+    st.session_state.pending_chart = None
+    st.rerun()
+
 with st.sidebar:
     st.title("📊 AI Retail Analyst")
     st.caption("Powered by Groq + LLaMA")

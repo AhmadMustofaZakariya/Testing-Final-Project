@@ -89,28 +89,27 @@ def query_data(sql: str) -> str:
 @tool
 def create_chart(data_json: str, chart_type: str, title: str, x_col: str, y_col: str) -> str:
     """Gunakan tool ini untuk visualisasi setelah data didapat."""
+    # Di dalam tool create_chart di agent.py
     try:
-        import json
-        import streamlit as st
-        
-        # 1. Ubah string JSON dari query_data menjadi list of dict
-        data = json.loads(data_json)
-        
-        # 2. SUSUN OBJEKNYA DI SINI
-        # Ini adalah 'paket' yang akan dibaca oleh fungsi render_chart di app.py
+        df = run_sql(sql)
+        if df.empty:
+            return "Tidak ada data untuk divisualisasikan."
+
+        # Pastikan data yang dikirim ke UI hanya kolom yang dibutuhkan
+        # dan diconvert ke list of dict yang bersih
+        clean_data = df.to_dict(orient="records")
+
         chart_data = {
             "type": chart_type,
             "title": title,
-            "x_col": x_col,
-            "y_col": y_col,
-            "data": df[[x_col, y_col]].to_dict(orient="records"), # Pastikan ini ada
-            "columns": [x_col, y_col] # Pastikan ini ada
+            "columns": [x_col, y_col], # Ini yang dicari app.py
+            "data": clean_data
         }
 
-        # 3. Simpan ke session_state agar bisa ditangkap oleh app.py
+        import streamlit as st
         st.session_state.pending_chart = chart_data
         
-        return f"CHART_READY:{title}" # Sinyal untuk app.py bahwa chart sudah siap
+        return f"CHART_READY:{title}"
         
     except Exception as e:
         return f"Error saat menyiapkan chart: {str(e)}"
