@@ -162,7 +162,14 @@ def create_agent():
         google_api_key=os.getenv("GEMINI_API_KEY"),
         temperature=0,
         convert_system_message_to_human=True
-    )
+        model_kwargs={
+        "tool_config": {
+            "function_calling_config": {
+                "mode": "AUTO"
+            }
+        }
+    }
+)
     tools = [query_data, create_chart]
     
     # Hapus prompt parameter, tidak didukung versi ini
