@@ -88,6 +88,7 @@ def query_data(sql: str) -> str:
 # -------------------------------------------------------
 @tool
 def create_chart(data_json: str, chart_type: str, title: str, x_col: str, y_col: str) -> str:
+    """Gunakan tool ini untuk visualisasi setelah data didapat."""
     try:
         import json
         import streamlit as st
