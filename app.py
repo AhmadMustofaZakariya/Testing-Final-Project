@@ -123,8 +123,9 @@ if user_input:
         with st.chat_message("assistant"):
             with st.spinner("Menganalisis..."):
                 try:
-                    response = st.session_state.agent.invoke({"input": user_input})
-                    answer = response["output"]
+                    from agent import invoke_agent
+                    answer = invoke_agent(st.session_state.agent, user_input)
+
 
                     # Cek apakah ada chart yang perlu dirender
                     chart_data = None
