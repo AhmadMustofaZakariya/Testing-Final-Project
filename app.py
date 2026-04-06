@@ -1,17 +1,19 @@
 """
-app.py
+app.py - FIXED VERSION
 Streamlit Chat UI untuk AI Retail Analyst
+
+Fix:
+1. render_chart() didefinisikan di atas sebelum dipanggil
+2. st.chat_input() selalu ada di main flow
+3. Chart data disimpan di st.session_state, bukan file JSON
 """
 
 import os
-import json
 import streamlit as st
 import plotly.express as px
-import plotly.graph_objects as go
 import pandas as pd
 from dummy_db import create_and_populate
-from agent import create_agent
-import tempfile 
+from agent import create_agent, invoke_agent
 
 # -------------------------------------------------------
 # PAGE CONFIG
@@ -23,7 +25,33 @@ st.set_page_config(
 )
 
 # -------------------------------------------------------
-# INIT: buat dummy DB kalau belum ada
+# HELPER: render chart
+# Didefinisikan PALING ATAS supaya bisa dipanggil di mana saja
+# -------------------------------------------------------
+def render_chart(chart_data: dict):
+    df  = pd.DataFrame(chart_data["data"])
+    cols  = chart_data["columns"]
+    title = chart_data["title"]
+    ctype = chart_data.get("type", "bar")
+
+    if ctype == "pie":
+        fig = px.pie(df, names=cols[0], values=cols[1], title=title,
+                     color_discrete_sequence=px.colors.qualitative.Set2)
+    elif ctype == "line":
+        fig = px.line(df, x=cols[0], y=cols[1], title=title)
+    elif ctype == "scatter":
+        fig = px.scatter(df, x=cols[0], y=cols[1], title=title)
+    else:
+        fig = px.bar(df, x=cols[0], y=cols[1], title=title,
+                     color=cols[0],
+                     color_discrete_sequence=px.colors.qualitative.Set2)
+
+    fig.update_layout(height=400)
+    st.plotly_chart(fig, use_container_width=True)
+
+
+# -------------------------------------------------------
+# INIT DB
 # -------------------------------------------------------
 if not os.path.exists("retail_dummy.db"):
     create_and_populate()
@@ -31,35 +59,32 @@ if not os.path.exists("retail_dummy.db"):
 # -------------------------------------------------------
 # SESSION STATE
 # -------------------------------------------------------
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-if "agent" not in st.session_state:
-    st.session_state.agent = None
+if "messages"     not in st.session_state:
+    st.session_state.messages     = []
+if "agent"        not in st.session_state:
+    st.session_state.agent        = None
+if "pending_chart" not in st.session_state:
+    st.session_state.pending_chart = None  # ← chart disimpan di sini
 
 # -------------------------------------------------------
-# SIDEBAR: API Key input
+# SIDEBAR
 # -------------------------------------------------------
 with st.sidebar:
     st.title("📊 AI Retail Analyst")
-    st.caption("Powered by Gemini AI")
+    st.caption("Powered by Groq + LLaMA")
     st.divider()
 
-    # Cek API key dari environment
-    api_key = os.getenv("GROQ_API_KEY")
-    if api_key:
+    if os.getenv("GROQ_API_KEY"):
         if st.session_state.agent is None:
             st.session_state.agent = create_agent()
         st.success("Agent siap digunakan!")
     else:
-        st.error("GEMINI_API_KEY tidak ditemukan!")
-        st.caption("Pastikan .env sudah diisi")
+        st.error("GROQ_API_KEY tidak ditemukan!")
+        st.caption("Pastikan Secrets sudah diisi")
 
     st.divider()
-
-
-    # Contoh pertanyaan
     st.subheader("💡 Contoh pertanyaan")
-    example_questions = [
+    questions = [
         "Berapa jumlah pelanggan high risk churn?",
         "Tampilkan distribusi segmen retensi dalam grafik",
         "Kota mana yang memiliki churn tertinggi?",
@@ -67,7 +92,7 @@ with st.sidebar:
         "Berapa rata-rata churn probability pelanggan wanita?",
         "Tampilkan chart churn per kota",
     ]
-    for q in example_questions:
+    for q in questions:
         if st.button(q, use_container_width=True):
             st.session_state.pending_question = q
 
@@ -77,77 +102,57 @@ with st.sidebar:
 st.title("📊 AI Retail Analyst")
 st.caption("Tanyakan apapun tentang data pelanggan, churn, dan retensi")
 
-# Tampilkan chat history
+# Render chat history
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
-        # Render chart kalau ada
         if "chart" in msg:
             render_chart(msg["chart"])
 
-# Helper: render chart dari data JSON
-def render_chart(chart_data: dict):
-    df = pd.DataFrame(chart_data["data"])
-    cols = chart_data["columns"]
-    title = chart_data["title"]
+# -------------------------------------------------------
+# CHAT INPUT — harus selalu ada, tidak boleh di dalam kondisi
+# -------------------------------------------------------
+user_input = st.chat_input("Tanyakan sesuatu tentang data pelanggan...")
 
-    if chart_data["type"] == "pie" and len(cols) >= 2:
-        fig = px.pie(df, names=cols[0], values=cols[1], title=title)
-    elif chart_data["type"] == "bar" and len(cols) >= 2:
-        fig = px.bar(df, x=cols[0], y=cols[1], title=title,
-                     color=cols[0], color_discrete_sequence=px.colors.qualitative.Set2)
-    else:
-        fig = px.bar(df, x=cols[0], y=cols[1], title=title)
-
-    fig.update_layout(showlegend=True, height=400)
-    st.plotly_chart(fig, use_container_width=True)
-
-
-# Handle pertanyaan dari sidebar button
+# Override dengan sidebar button jika ada
 if "pending_question" in st.session_state:
-    user_input = st.session_state.pending_question
-    del st.session_state.pending_question
-else:
-    user_input = st.chat_input("Tanyakan sesuatu tentang data pelanggan...")
+    user_input = st.session_state.pop("pending_question")
 
-# Process input
+# -------------------------------------------------------
+# PROCESS
+# -------------------------------------------------------
 if user_input:
     if not st.session_state.agent:
-        st.warning("Masukkan Groq API Key di sidebar terlebih dahulu.")
+        st.warning("Agent belum siap, cek API key.")
     else:
-        # Tampilkan pesan user
         st.session_state.messages.append({"role": "user", "content": user_input})
         with st.chat_message("user"):
             st.markdown(user_input)
 
-        # Jalankan agent
         with st.chat_message("assistant"):
             with st.spinner("Menganalisis..."):
                 try:
-                    from agent import invoke_agent
                     answer = invoke_agent(st.session_state.agent, user_input)
 
-
-                    # Cek apakah ada chart yang perlu dirender
+                    # Ambil chart dari session_state (disimpan oleh agent.py)
                     chart_data = None
                     if "CHART_READY:" in answer:
-                        chart_path = os.path.join(tempfile.gettempdir(), "chart_data.json")
-                        if os.path.exists(chart_path):
-                            with open(chart_path) as f:
-                                chart_data = json.load(f)
+                        chart_data = st.session_state.get("pending_chart")
+                        if chart_data:
                             answer = answer.replace(
                                 f"CHART_READY:{chart_data['title']}", ""
                             ).strip()
+                            st.session_state.pending_chart = None
 
                     st.markdown(answer)
                     if chart_data:
                         render_chart(chart_data)
 
                     # Simpan ke history
-                    msg = {"role": "assistant", "content": answer}
+                    saved = {"role": "assistant", "content": answer}
                     if chart_data:
-                        msg["chart"] = chart_data
-                    st.session_state.messages.append(msg)
+                        saved["chart"] = chart_data
+                    st.session_state.messages.append(saved)
 
                 except Exception as e:
                     err = f"Terjadi error: {str(e)}"

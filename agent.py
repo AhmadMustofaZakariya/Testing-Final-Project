@@ -8,12 +8,10 @@ import os
 import sqlite3
 import json
 import pandas as pd
-from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langgraph.prebuilt import create_react_agent
 from langchain.tools import tool
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 # -------------------------------------------------------
 # CONFIG
@@ -108,11 +106,11 @@ def create_chart(sql: str, chart_type: str, title: str, x_col: str, y_col: str) 
         if df.empty:
             return "Tidak ada data untuk divisualisasikan."
 
+        # Validasi kolom yang diminta LLM ada di hasil query
         if x_col not in df.columns or y_col not in df.columns:
             available = ", ".join(df.columns.tolist())
             return f"Kolom tidak ditemukan. Kolom tersedia: {available}"
 
-        # Simpan ke file JSON seperti sebelumnya
         chart_data = {
             "type"   : chart_type,
             "title"  : title,
@@ -121,10 +119,17 @@ def create_chart(sql: str, chart_type: str, title: str, x_col: str, y_col: str) 
             "data"   : df[[x_col, y_col]].to_dict(orient="records"),
             "columns": [x_col, y_col]
         }
-        import json, tempfile, os
-        chart_path = os.path.join(tempfile.gettempdir(), "chart_data.json")
-        with open(chart_path, "w") as f:
-            json.dump(chart_data, f)
+
+        # Simpan ke Streamlit session_state — lebih reliable dari file JSON
+        try:
+            import streamlit as st
+            st.session_state.pending_chart = chart_data
+        except Exception:
+            # Fallback jika tidak ada Streamlit context (misal test di terminal)
+            import json, tempfile, os
+            path = os.path.join(tempfile.gettempdir(), "chart_data.json")
+            with open(path, "w") as f:
+                json.dump(chart_data, f)
 
         return f"CHART_READY:{title}"
 
@@ -155,25 +160,21 @@ Panduan menjawab:
 - Jangan tampilkan SQL query mentah ke user
 - Jika data tidak ditemukan, jelaskan dengan sopan
 """
-load_dotenv()
 
-# BENAR
-def create_agent():
+def create_agent(api_key: str):
     llm = ChatGroq(
-        model="llama-3.1-8b-instant",
-        api_key=os.getenv("GROQ_API_KEY"),
+        model="llama3-8b-8192",
+        api_key=api_key,
         temperature=0
     )
     tools = [query_data, create_chart]
-    agent = create_react_agent(llm, tools)
+    agent = create_react_agent(llm, tools, prompt=SYSTEM_PROMPT)
     return agent
 
 def invoke_agent(agent, user_input: str) -> str:
-    full_input = f"""{SYSTEM_PROMPT}
-
-Pertanyaan user: {user_input}"""
-    
+    """Helper untuk invoke agent dan ambil response terakhir."""
     result = agent.invoke({
-        "messages": [{"role": "user", "content": full_input}]
+        "messages": [HumanMessage(content=user_input)]
     })
+    # Ambil pesan terakhir dari agent
     return result["messages"][-1].content
