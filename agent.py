@@ -88,20 +88,20 @@ def query_data(sql: str) -> str:
 # DI AGENT.PY - Ganti fungsi create_chart kamu dengan ini
 # DI AGENT.PY
 @tool
-def create_chart(sql_query: str, chart_type: str, title: str, x_col: str, y_col: str):
+def create_chart(sql_query: str, chart_type: str, title: str, x_col: str, y_col: str) -> str:
     """
-    Gunakan ini UNTUK MENAMPILKAN GRAFIK.
-    Input adalah SQL query yang sama dengan yang kamu gunakan di query_data.
+    Wajib dipanggil untuk menampilkan grafik. 
+    sql_query: Query SQL yang sama dengan yang kamu gunakan di query_data.
+    chart_type: 'bar', 'pie', atau 'line'.
+    title: Judul grafik.
+    x_col: Nama kolom untuk sumbu X.
+    y_col: Nama kolom untuk sumbu Y.
     """
     import streamlit as st
     try:
-        # Biarkan Python yang ambil datanya lagi secara internal
+        # Tool ini ambil data sendiri, jadi LLM gak capek bawa JSON
         df = run_sql(sql_query) 
         
-        if df.empty:
-            return "Data kosong, tidak bisa bikin chart."
-
-        # Simpan ke state
         st.session_state.pending_chart = {
             "type": chart_type,
             "title": title,
@@ -158,6 +158,11 @@ ATURAN EMAS:
 
 {SCHEMA_INFO}
 Gunakan Bahasa Indonesia profesional.
+
+PENTING:
+- Jika user meminta grafik/visualisasi, kamu HARUS memanggil tool `create_chart`.
+- JANGAN memberikan analisis teks sebelum kamu mendapatkan konfirmasi 'CHART_READY' dari tool `create_chart`.
+- Jika kamu hanya menjawab dengan teks tanpa memanggil `create_chart`, user akan menganggap kamu rusak.
 """
 load_dotenv()
 
