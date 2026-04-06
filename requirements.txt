@@ -1,5 +1,5 @@
 langchain
-langchain-google-genai
+langchain-groq
 langchain-community
 langgraph==0.2.55
 sqlalchemy

@@ -9,7 +9,7 @@ import sqlite3
 import json
 import pandas as pd
 from dotenv import load_dotenv
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from langgraph.prebuilt import create_react_agent
 from langchain.tools import tool
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -158,18 +158,10 @@ load_dotenv()
 
 # BENAR
 def create_agent():
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-3.1-flash-lite-preview",
-        google_api_key=os.getenv("GEMINI_API_KEY"),
-        temperature=0,
-        convert_system_message_to_human=True,
-        model_kwargs={
-            "generation_config": {
-                "thinking_config": {
-                    "thinking_budget": 0  # disable thinking = no thought_signature needed
-                }
-            }
-        }
+    llm = ChatGroq(
+        model="llama-3.1-8b-instant",
+        api_key=os.getenv("GROQ_API_KEY"),
+        temperature=0
     )
     tools = [query_data, create_chart]
     agent = create_react_agent(llm, tools)

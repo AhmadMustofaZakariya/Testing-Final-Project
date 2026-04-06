@@ -44,7 +44,7 @@ with st.sidebar:
     st.divider()
 
     # Cek API key dari environment
-    api_key = os.getenv("GEMINI_API_KEY")
+    api_key = os.getenv("GROQ_API_KEY")
     if api_key:
         if st.session_state.agent is None:
             st.session_state.agent = create_agent()
