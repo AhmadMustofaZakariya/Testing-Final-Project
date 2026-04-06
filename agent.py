@@ -168,30 +168,49 @@ PENTING:
 """
 load_dotenv()
 
+# def create_agent():
+#     llm = ChatGroq(
+#         model="meta-llama/llama-4-scout-17b-16e-instruct",
+#         api_key=os.getenv("GROQ_API_KEY"),
+#         temperature=0
+#     )
+#     tools = [query_data]
+#     agent = create_react_agent(llm, tools)
+#     return agent
+
 def create_agent():
-    llm = ChatGroq(
-        model="meta-llama/llama-4-scout-17b-16e-instruct",
-        api_key=os.getenv("GROQ_API_KEY"),
-        temperature=0
-    )
-    tools = [query_data]
-    agent = create_react_agent(llm, tools)
-    return agent
+    llm = ChatGroq(model="meta-llama/llama-4-scout-17b-16e-instruct", temperature=0)
+    tools = [query_data] # create_chart di-comment kan?
+    
+    # Masukkan SYSTEM_PROMPT di sini sebagai state_modifier
+    return create_react_agent(llm, tools, state_modifier=SYSTEM_PROMPT)
 
 # Di agent.py
-def invoke_agent(agent, user_input: str) -> str:
-    # Kita paksa LLM untuk selalu sadar dia punya tools
-    # Tambahkan instruksi spesifik di pesan terakhir
-    full_input = f"{user_input}. (INGAT: Jika butuh grafik, panggil tool query_data lalu panggil create_chart. Jangan cuma jawab teks!)"
+# def invoke_agent(agent, user_input: str) -> str:
+#     # Kita paksa LLM untuk selalu sadar dia punya tools
+#     # Tambahkan instruksi spesifik di pesan terakhir
+#     full_input = f"{user_input}. (INGAT: Jika butuh grafik, panggil tool query_data lalu panggil create_chart. Jangan cuma jawab teks!)"
     
+#     result = agent.invoke(
+#         {
+#             "messages": [
+#                 SystemMessage(content=SYSTEM_PROMPT), 
+#                 HumanMessage(content=full_input)
+#             ]
+#         },
+#         config={"recursion_limit": 50}
+#     )
+#     last_message = result["messages"][-1] 
+#     return last_message.content
+
+def invoke_agent(agent, user_input: str) -> str:
+    # Kita kirim input sebagai dictionary 'messages' 
+    # LangGraph akan menggabungkan ini dengan history/system prompt internalnya
     result = agent.invoke(
-        {
-            "messages": [
-                SystemMessage(content=SYSTEM_PROMPT), 
-                HumanMessage(content=full_input)
-            ]
-        },
+        {"messages": [("user", user_input)]}, # Gunakan format tuple (role, content)
         config={"recursion_limit": 50}
     )
-    last_message = result["messages"][-1] 
-    return last_message.content
+    
+    # Ambil konten teks dari pesan terakhir
+    return result["messages"][-1].content
+
