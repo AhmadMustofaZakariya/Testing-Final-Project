@@ -177,12 +177,12 @@ CONTOH RESPON JIKA USER MINTA GRAFIK:
 1. Action: query_data(sql="SELECT city, count(*) FROM customers GROUP BY city")
 2. Observation: [JSON data]
 3. Action: create_chart(
-    payload={
+    payload=
         "data_json": "...",
         "chart_type": "bar",
         "title": "Distribusi Segmen Retensi",
         "x_col": "retention_segment",
-        "y_col": "jumlah"})
+        "y_col": "jumlah")
 4. Final Answer: Berikut adalah grafik sebaran pelanggan Anda...
 """
 load_dotenv()
