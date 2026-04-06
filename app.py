@@ -11,6 +11,7 @@ import plotly.graph_objects as go
 import pandas as pd
 from dummy_db import create_and_populate
 from agent import create_agent
+import tempfile 
 
 # -------------------------------------------------------
 # PAGE CONFIG
@@ -129,13 +130,14 @@ if user_input:
 
                     # Cek apakah ada chart yang perlu dirender
                     chart_data = None
-                    if "CHART_READY:" in answer and os.path.exists("chart_data.json"):
-                        with open("chart_data.json") as f:
-                            chart_data = json.load(f)
-                        # Bersihkan marker dari teks jawaban
-                        answer = answer.replace(
-                            f"CHART_READY:{chart_data['title']}", ""
-                        ).strip()
+                    if "CHART_READY:" in answer:
+                        chart_path = os.path.join(tempfile.gettempdir(), "chart_data.json")
+                        if os.path.exists(chart_path):
+                            with open(chart_path) as f:
+                                chart_data = json.load(f)
+                            answer = answer.replace(
+                                f"CHART_READY:{chart_data['title']}", ""
+                            ).strip()
 
                     st.markdown(answer)
                     if chart_data:

@@ -108,12 +108,11 @@ def create_chart(sql: str, chart_type: str, title: str, x_col: str, y_col: str) 
         if df.empty:
             return "Tidak ada data untuk divisualisasikan."
 
-        # Validasi kolom yang diminta LLM ada di hasil query
         if x_col not in df.columns or y_col not in df.columns:
             available = ", ".join(df.columns.tolist())
             return f"Kolom tidak ditemukan. Kolom tersedia: {available}"
 
-        # Simpan ke file sementara supaya Streamlit bisa render
+        # Simpan ke file JSON seperti sebelumnya
         chart_data = {
             "type"   : chart_type,
             "title"  : title,
@@ -122,7 +121,9 @@ def create_chart(sql: str, chart_type: str, title: str, x_col: str, y_col: str) 
             "data"   : df[[x_col, y_col]].to_dict(orient="records"),
             "columns": [x_col, y_col]
         }
-        with open("chart_data.json", "w") as f:
+        import json, tempfile, os
+        chart_path = os.path.join(tempfile.gettempdir(), "chart_data.json")
+        with open(chart_path, "w") as f:
             json.dump(chart_data, f)
 
         return f"CHART_READY:{title}"
