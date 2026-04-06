@@ -1,6 +1,7 @@
 langchain
 langchain-google-genai
 langchain-community
+langgraph
 sqlalchemy
 psycopg2-binary
 pandas

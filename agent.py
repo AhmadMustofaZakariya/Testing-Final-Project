@@ -13,6 +13,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.prebuilt import create_react_agent
 from langchain.tools import tool
 from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 # -------------------------------------------------------
 # CONFIG
@@ -160,23 +161,20 @@ def create_agent():
         model="gemini-2.0-flash",
         google_api_key=os.getenv("GEMINI_API_KEY"),
         temperature=0,
-        convert_system_message_to_human=True  # ← tambahkan ini
+        convert_system_message_to_human=True
     )
     tools = [query_data, create_chart]
-    
-    # Hapus messages_modifier, cukup prompt saja
-    agent = create_react_agent(
-        llm,
-        tools,
-        prompt=SYSTEM_PROMPT
-    )
+
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", SYSTEM_PROMPT),
+        MessagesPlaceholder(variable_name="messages"),
+    ])
+
+    agent = create_react_agent(llm, tools, prompt=prompt)
     return agent
 
-
 def invoke_agent(agent, user_input: str) -> str:
-    """Helper untuk invoke agent dan ambil response terakhir."""
     result = agent.invoke({
-        "messages": [{"role": "user", "content": user_input}]  # ganti format ini
+        "messages": [{"role": "user", "content": user_input}]
     })
-    # Ambil pesan terakhir dari agent
     return result["messages"][-1].content
