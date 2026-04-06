@@ -87,19 +87,30 @@ def query_data(sql: str) -> str:
 # data yang sudah ada.
 # -------------------------------------------------------
 @tool
-def create_chart(data_json: str, chart_type: str, title: str, x_col: str, y_col: str) -> str:
-    """Gunakan tool ini untuk visualisasi setelah data didapat."""
+def create_chart(payload: dict) -> str:
+    """
+    Gunakan tool ini untuk membuat visualisasi.
+    payload harus berisi:
+    {
+        "data_json": "...",
+        "chart_type": "bar/pie/line/scatter",
+        "title": "...",
+        "x_col": "...",
+        "y_col": "..."
+    }
+    """
     try:
         import json
         import streamlit as st
-        
-        # Bersihkan kemungkinan markdown wrapping
-        data_json = data_json.strip()
-        data_json = data_json.replace("```json", "").replace("```", "").strip()
+        import pandas as pd
 
-        # Parse JSON dengan json.loads dulu (lebih aman)
+        data_json = payload["data_json"]
+        chart_type = payload["chart_type"]
+        title = payload["title"]
+        x_col = payload["x_col"]
+        y_col = payload["y_col"]
+
         data = json.loads(data_json)
-
         df = pd.DataFrame(data)
 
         if df.empty:
@@ -117,7 +128,6 @@ def create_chart(data_json: str, chart_type: str, title: str, x_col: str, y_col:
         return f"CHART_READY:{title}"
 
     except Exception as e:
-        print("DEBUG DATA_JSON:", data_json)
         return f"Error saat menyiapkan chart: {str(e)}"
 
 # -------------------------------------------------------
@@ -167,11 +177,13 @@ CONTOH RESPON JIKA USER MINTA GRAFIK:
 1. Action: query_data(sql="SELECT city, count(*) FROM customers GROUP BY city")
 2. Observation: [JSON data]
 3. Action: create_chart(
-   data_json='[JSON DARI query_data]',
-   chart_type='bar',
-   title='Pelanggan per Kota',
-   x_col='city',
-   y_col='jumlah')
+    payload={
+        "data_json": "...",
+        "chart_type": "bar",
+        "title": "Distribusi Segmen Retensi",
+        "x_col": "retention_segment",
+        "y_col": "jumlah"
+    })
 4. Final Answer: Berikut adalah grafik sebaran pelanggan Anda...
 """
 load_dotenv()
