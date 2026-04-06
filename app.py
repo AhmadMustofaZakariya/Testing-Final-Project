@@ -140,39 +140,36 @@ if "pending_question" in st.session_state:
 # -------------------------------------------------------
 # PROCESS
 # -------------------------------------------------------
-    # --- Di dalam bagian if user_input: ---
-    if user_input:
-        # 1. Simpan & Tampilkan pesan USER dulu (biar gak hilang)
-        st.session_state.messages.append({"role": "user", "content": user_input})
-        with st.chat_message("user"):
-            st.markdown(user_input)
+# DI APP.PY - Pastikan blok ini sejajar di kiri (tidak masuk ke dalam blok lain)
+if user_input:
+    # 1. Simpan & Tampilkan pesan USER
+    st.session_state.messages.append({"role": "user", "content": user_input})
+    with st.chat_message("user"):
+        st.markdown(user_input)
 
-        # 2. Proses pesan ASSISTANT
-        with st.chat_message("assistant"):
-            st.session_state.pending_chart = None # Reset setiap chat baru
+    # 2. Proses pesan ASSISTANT
+    with st.chat_message("assistant"):
+        st.session_state.pending_chart = None 
+        
+        with st.spinner("Menganalisis data..."):
+            full_response = invoke_agent(st.session_state.agent, user_input)
             
-            with st.spinner("Menganalisis data..."):
-                # Panggil agent
-                full_response = invoke_agent(st.session_state.agent, user_input)
-                
-                # Cek apakah ada data chart di session_state
-                chart_data = st.session_state.get("pending_chart")
-                
-                # Bersihkan teks respons dari kode-kode internal
-                clean_answer = full_response.replace(f"CHART_READY:", "").strip()
-                if chart_data:
-                    clean_answer = clean_answer.replace(chart_data['title'], "").strip()
+            # Ambil data chart yang baru saja diisi oleh tool
+            chart_data = st.session_state.get("pending_chart")
+            
+            # Bersihkan teks respons
+            clean_answer = full_response.replace("CHART_READY:", "").strip()
+            if chart_data:
+                clean_answer = clean_answer.replace(chart_data['title'], "").strip()
 
-                # Tampilkan jawaban teks
-                st.markdown(clean_answer)
+            st.markdown(clean_answer)
+            
+            if chart_data:
+                render_chart(chart_data)
                 
-                # Tampilkan chart jika ada
-                if chart_data:
-                    render_chart(chart_data)
-                    
-                # 3. Simpan jawaban assistant ke history (termasuk data chart-nya)
-                st.session_state.messages.append({
-                    "role": "assistant", 
-                    "content": clean_answer,
-                    "chart": chart_data # Simpan objek chart agar gak hilang pas rerun
-                })
+            # 3. Simpan ke history
+            st.session_state.messages.append({
+                "role": "assistant", 
+                "content": clean_answer,
+                "chart": chart_data 
+            })

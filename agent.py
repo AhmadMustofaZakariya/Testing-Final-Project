@@ -86,45 +86,33 @@ def query_data(sql: str) -> str:
 # tool ini hanya bertanggung jawab render chart dari
 # data yang sudah ada.
 # -------------------------------------------------------
+# DI AGENT.PY - Ganti fungsi create_chart kamu dengan ini
 @tool
-def create_chart(payload: dict) -> str:
+def create_chart(data_json: str, chart_type: str, title: str, x_col: str, y_col: str) -> str:
     """
-    Gunakan tool ini untuk membuat visualisasi.
-    payload harus berisi:
-    {
-        "data_json": "...",
-        "chart_type": "bar/pie/line/scatter",
-        "title": "...",
-        "x_col": "...",
-        "y_col": "..."
-    }
+    WAJIB dipanggil untuk membuat visualisasi. 
+    data_json: Hasil string JSON dari query_data.
+    chart_type: 'bar', 'pie', 'line', atau 'scatter'.
+    title: Judul grafik.
+    x_col: Nama kolom untuk sumbu X.
+    y_col: Nama kolom untuk sumbu Y.
     """
     try:
         import json
         import streamlit as st
-        import pandas as pd
-
-        data_json = payload["data_json"]
-        chart_type = payload["chart_type"]
-        title = payload["title"]
-        x_col = payload["x_col"]
-        y_col = payload["y_col"]
-
+        
+        # Parse data JSON yang dikirim dari query_data
         data = json.loads(data_json)
-        df = pd.DataFrame(data)
-
-        if df.empty:
-            return "Tidak ada data untuk divisualisasikan."
-
+        
+        # Simpan ke session_state agar dibaca app.py
         chart_data = {
             "type": chart_type,
             "title": title,
             "columns": [x_col, y_col],
-            "data": df.to_dict(orient="records")
+            "data": data
         }
 
         st.session_state.pending_chart = chart_data
-        
         return f"CHART_READY:{title}"
 
     except Exception as e:
