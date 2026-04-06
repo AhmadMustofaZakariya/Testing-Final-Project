@@ -155,7 +155,7 @@ Panduan menjawab:
 """
 load_dotenv()
 
-def create_agent(api_key: str):
+def create_agent():
     llm = ChatGoogleGenerativeAI(
         model="gemini-2-flash",  # gratis dan cepat
         google_api_key=os.getenv("GEMINI_API_KEY"),
