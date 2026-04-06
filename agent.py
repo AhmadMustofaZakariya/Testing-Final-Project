@@ -8,6 +8,7 @@ import os
 import sqlite3
 import json
 import pandas as pd
+from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langgraph.prebuilt import create_react_agent
 from langchain.tools import tool
@@ -160,11 +161,12 @@ Panduan menjawab:
 - Jangan tampilkan SQL query mentah ke user
 - Jika data tidak ditemukan, jelaskan dengan sopan
 """
+load_dotenv()
 
 def create_agent(api_key: str):
     llm = ChatGroq(
         model="llama3-8b-8192",
-        api_key=api_key,
+        api_key=os.getenv("GROQ_API_KEY"),
         temperature=0
     )
     tools = [query_data, create_chart]
