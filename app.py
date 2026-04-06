@@ -29,6 +29,9 @@ st.set_page_config(
 # Didefinisikan PALING ATAS supaya bisa dipanggil di mana saja
 # -------------------------------------------------------
 def render_chart(chart_data: dict):
+    # DEBUG: Hapus ini kalau sudah jalan
+    st.write("Data masuk ke render_chart:", chart_data) 
+
     # Validasi ketat
     if not chart_data or "data" not in chart_data or "columns" not in chart_data:
         return # Diam saja, jangan tampilkan warning agar UI tidak kotor
@@ -151,33 +154,34 @@ if user_input:
     with st.chat_message("assistant"):
         st.session_state.pending_chart = None 
         
+        # Di app.py, cari bagian invoke_agent
         with st.spinner("Menganalisis data..."):
-            full_response = invoke_agent(st.session_state.agent, user_input)
+            # Pastikan pending_chart bersih sebelum mulai
+            st.session_state.pending_chart = None 
             
-            # 1. Cek apakah agent baru saja mengisi pending_chart via tool
+            # Jalankan agen
+            answer = invoke_agent(st.session_state.agent, user_input)
+
+            # PAKSA Streamlit untuk mengambil state terbaru
             chart_data = st.session_state.get("pending_chart")
 
-            # 2. Bersihkan jawaban dari teks teknis "CHART_READY"
-            clean_answer = full_response
-            if "CHART_READY:" in full_response:
-                clean_answer = full_response.split("CHART_READY:")[0].strip()
+            # Bersihkan teks CHART_READY agar tidak tampil di chat
+            clean_answer = answer
+            if "CHART_READY:" in answer:
+                import re
+                clean_answer = re.sub(r"CHART_READY:.*", "", answer).strip()
 
-            # 3. Tampilkan teks dulu
             st.markdown(clean_answer)
 
-            # 4. Tampilkan grafik tepat di bawah teks
             if chart_data:
                 render_chart(chart_data)
-                # PENTING: simpan ke history agar tidak hilang saat refresh
+                # Simpan ke history agar tidak hilang saat scroll
                 st.session_state.messages.append({
                     "role": "assistant", 
                     "content": clean_answer, 
                     "chart": chart_data
                 })
-                # Reset agar tidak muncul di pertanyaan berikutnya
+                # Reset supaya tidak muncul double di chat berikutnya
                 st.session_state.pending_chart = None 
             else:
-                st.session_state.messages.append({
-                    "role": "assistant", 
-                    "content": clean_answer
-                })
+                st.session_state.messages.append({"role": "assistant", "content": clean_answer})
