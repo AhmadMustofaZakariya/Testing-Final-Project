@@ -178,14 +178,6 @@ load_dotenv()
 #     agent = create_react_agent(llm, tools)
 #     return agent
 
-def create_agent():
-    llm = ChatGroq(model="meta-llama/llama-4-scout-17b-16e-instruct", temperature=0)
-    tools = [query_data] # create_chart di-comment kan?
-    
-    # Masukkan SYSTEM_PROMPT di sini sebagai state_modifier
-    return create_react_agent(llm, tools, state_modifier=SYSTEM_PROMPT)
-
-# Di agent.py
 # def invoke_agent(agent, user_input: str) -> str:
 #     # Kita paksa LLM untuk selalu sadar dia punya tools
 #     # Tambahkan instruksi spesifik di pesan terakhir
@@ -203,14 +195,22 @@ def create_agent():
 #     last_message = result["messages"][-1] 
 #     return last_message.content
 
+from langchain_core.prompts import ChatPromptTemplate
+
+def create_agent():
+    llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0)
+    tools = [query_data] # create_chart tetap di-comment
+    
+    # Gunakan state_modifier untuk memasukkan SYSTEM_PROMPT
+    return create_react_agent(llm, tools, state_modifier=SYSTEM_PROMPT)
+
 def invoke_agent(agent, user_input: str) -> str:
-    # Kita kirim input sebagai dictionary 'messages' 
-    # LangGraph akan menggabungkan ini dengan history/system prompt internalnya
+    # Gunakan format dictionary yang paling standar untuk LangGraph
     result = agent.invoke(
-        {"messages": [("user", user_input)]}, # Gunakan format tuple (role, content)
+        {"messages": [("user", user_input)]}, 
         config={"recursion_limit": 50}
     )
     
-    # Ambil konten teks dari pesan terakhir
+    # Ambil konten teks dari pesan terakhir (AIMessage)
     return result["messages"][-1].content
 
