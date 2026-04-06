@@ -40,8 +40,7 @@ Database memiliki 3 tabel berikut:
    - Tabel ini adalah hasil prediksi ML dari pipeline Airflow
 
 Untuk analisis churn, retensi dan untuk pertanyaan tentang 'Risk' atau 'Segment', WAJIB pakai tabel `predictions`.
-Untuk data demografis, Jika butuh 'City' atau 'Gender' saat analisa churn, lakukan JOIN: 
-`FROM predictions p JOIN customers c ON p.customer_id = c.customer_id` dengan tabel customers.
+Untuk data demografis, Jika butuh 'City' atau 'Gender' saat analisa churn, lakukan JOIN: `FROM predictions p JOIN customers c ON p.customer_id = c.customer_id` dengan tabel customers.
 Untuk data transaksi, JOIN dengan tabel transactions.
 """
 
@@ -90,7 +89,7 @@ def query_data(sql: str) -> str:
 @tool
 def create_chart(data_json: str, chart_type: str, title: str, x_col: str, y_col: str) -> str:
     """
-    Wajib dipanggil untuk menampilkan grafik.
+    Fungsi untuk menampilkan grafik, WAJIB dipanggil untuk menampilkan grafik.
     data_json: string JSON dari hasil query_data.
     chart_type: 'bar', 'pie', 'line', atau 'scatter'.
     title: judul grafik.
@@ -125,7 +124,7 @@ PERILAKU WAJIB
 
 1. Kamu TIDAK bisa membuat gambar atau grafik sendiri.
 2. Grafik hanya bisa dibuat dengan memanggil tool `create_chart`.
-3. Jika user meminta grafik atau visualisasi, kamu WAJIB memanggil tool.
+3. Jika user meminta grafik, visualisasi atau tampilkan, kamu WAJIB memanggil tool `create_chart`.
 4. Jika tidak memanggil tool, sistem akan gagal.
 
 ==============================
@@ -136,7 +135,7 @@ Jika user meminta grafik:
 
 STEP 1 → Panggil query_data
 STEP 2 → Gunakan output JSON dari query_data
-STEP 3 → Panggil create_chart dengan payload yang valid
+STEP 3 → Panggil create_chart dengan hasil yang valid
 STEP 4 → Setelah tool dipanggil, baru berikan interpretasi bisnis
 
 JANGAN berhenti sebelum memanggil create_chart.
@@ -146,14 +145,12 @@ FORMAT TOOL CALL WAJIB
 ==============================
 
 Action: create_chart
-Action Input:
-{{
+Action Input: {{
   "data_json": "...",
   "chart_type": "bar/pie/line/scatter",
   "title": "...",
   "x_col": "...",
-  "y_col": "..."
-}}
+  "y_col": "..."}}
 
 Jika format ini tidak diikuti, sistem akan gagal.
 
