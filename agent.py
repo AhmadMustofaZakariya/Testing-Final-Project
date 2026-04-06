@@ -157,6 +157,12 @@ ATURAN VISUALISASI:
 - Pie Chart: Gunakan HANYA untuk melihat komposisi/proporsi yang totalnya 100% (contoh: Persentase Segmen Retensi, Proporsi Gender).
 - Line Chart: WAJIB gunakan jika ada kolom waktu/tanggal (order_date) untuk melihat tren.
 - Scatter Plot: Gunakan untuk melihat korelasi antara dua angka (contoh: Churn Probability vs Total Spend).
+
+CONTOH RESPON JIKA USER MINTA GRAFIK:
+1. Action: query_data(sql="SELECT city, count(*) FROM customers GROUP BY city")
+2. Observation: [JSON data]
+3. Action: create_chart(sql="SELECT city, count(*) FROM customers GROUP BY city", chart_type="bar", title="Pelanggan per Kota", x_col="city", y_col="count(*)")
+4. Final Answer: Berikut adalah grafik sebaran pelanggan Anda...
 """
 load_dotenv()
 

@@ -129,53 +129,39 @@ if "pending_question" in st.session_state:
 # -------------------------------------------------------
 # PROCESS
 # -------------------------------------------------------
-if user_input:
-    # ... (kode lama: simpan user message) ...
+    # --- Di dalam bagian if user_input: ---
+    if user_input:
+        # 1. Simpan & Tampilkan pesan USER dulu (biar gak hilang)
+        st.session_state.messages.append({"role": "user", "content": user_input})
+        with st.chat_message("user"):
+            st.markdown(user_input)
 
-    with st.chat_message("assistant"):
-        with st.spinner("Menganalisis..."):
-            try:
-                # PENTING: Reset pending_chart sebelum invoke agar tidak terbawa dari chat sebelumnya
-                st.session_state.pending_chart = None 
+        # 2. Proses pesan ASSISTANT
+        with st.chat_message("assistant"):
+            st.session_state.pending_chart = None # Reset setiap chat baru
+            
+            with st.spinner("Menganalisis data..."):
+                # Panggil agent
+                full_response = invoke_agent(st.session_state.agent, user_input)
                 
-                answer = invoke_agent(st.session_state.agent, user_input)
-                
-                # Ambil data chart yang baru saja diisi oleh tool di agent.py
+                # Cek apakah ada data chart di session_state
                 chart_data = st.session_state.get("pending_chart")
+                
+                # Bersihkan teks respons dari kode-kode internal
+                clean_answer = full_response.replace(f"CHART_READY:", "").strip()
+                if chart_data:
+                    clean_answer = clean_answer.replace(chart_data['title'], "").strip()
 
-                # Bersihkan pesan "CHART_READY" atau "SUCCESS" dari teks agar tidak terlihat user
-                clean_answer = answer
-                if "CHART_READY:" in answer:
-                     # Kita hapus string penanda agar chat tetap bersih
-                     import re
-                     clean_answer = re.sub(r"CHART_READY:.*", "", answer).strip()
-                elif "SUCCESS: Grafik" in answer:
-                     clean_answer = re.sub(r"SUCCESS: Grafik.*", "", answer).strip()
-
-                # Tampilkan Teks
+                # Tampilkan jawaban teks
                 st.markdown(clean_answer)
-
-                # Tampilkan Chart jika ada
+                
+                # Tampilkan chart jika ada
                 if chart_data:
                     render_chart(chart_data)
-                    # Simpan ke history dengan data chart-nya
-                    st.session_state.messages.append({
-                        "role": "assistant", 
-                        "content": clean_answer, 
-                        "chart": chart_data
-                    })
-                else:
-                    st.session_state.messages.append({
-                        "role": "assistant", 
-                        "content": clean_answer
-                    })
-                
-                # Reset setelah diproses
-                st.session_state.pending_chart = None
-
-            except Exception as e:
-                err = f"Terjadi error: {str(e)}"
-                st.error(err)
-                st.session_state.messages.append(
-                    {"role": "assistant", "content": err}
-                )
+                    
+                # 3. Simpan jawaban assistant ke history (termasuk data chart-nya)
+                st.session_state.messages.append({
+                    "role": "assistant", 
+                    "content": clean_answer,
+                    "chart": chart_data # Simpan objek chart agar gak hilang pas rerun
+                })
