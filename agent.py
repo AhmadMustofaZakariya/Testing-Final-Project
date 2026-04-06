@@ -163,7 +163,7 @@ Panduan menjawab:
 """
 load_dotenv()
 
-def create_agent(api_key: str):
+def create_agent():
     llm = ChatGroq(
         model="llama3-8b-8192",
         api_key=os.getenv("GROQ_API_KEY"),
@@ -174,9 +174,11 @@ def create_agent(api_key: str):
     return agent
 
 def invoke_agent(agent, user_input: str) -> str:
-    """Helper untuk invoke agent dan ambil response terakhir."""
+    full_input = f"""{SYSTEM_PROMPT}
+
+    Pertanyaan user: {user_input}"""
+
     result = agent.invoke({
-        "messages": [HumanMessage(content=user_input)]
+        "messages": [HumanMessage(content=full_input)]  # ← full_input bukan user_input
     })
-    # Ambil pesan terakhir dari agent
     return result["messages"][-1].content
