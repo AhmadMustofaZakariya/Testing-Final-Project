@@ -159,17 +159,16 @@ def create_agent():
     llm = ChatGoogleGenerativeAI(
         model="gemini-2.0-flash",
         google_api_key=os.getenv("GEMINI_API_KEY"),
-        temperature=0
+        temperature=0,
+        convert_system_message_to_human=True  # ← tambahkan ini
     )
     tools = [query_data, create_chart]
     
-    # Gemini butuh format berbeda untuk system prompt
+    # Hapus messages_modifier, cukup prompt saja
     agent = create_react_agent(
-        llm, 
+        llm,
         tools,
-        prompt=SYSTEM_PROMPT,
-        # Tambahkan ini:
-        messages_modifier=SystemMessage(content=SYSTEM_PROMPT)
+        prompt=SYSTEM_PROMPT
     )
     return agent
 
