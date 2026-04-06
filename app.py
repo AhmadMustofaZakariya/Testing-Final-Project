@@ -145,28 +145,51 @@ if "pending_question" in st.session_state:
 # -------------------------------------------------------
 # DI APP.PY - Pastikan blok ini sejajar di kiri (tidak masuk ke dalam blok lain)
 if user_input:
-    # 1. Simpan & Tampilkan pesan USER
+    # 1. SIMPAN PESAN USER KE HISTORY (Wajib Pertama!)
     st.session_state.messages.append({"role": "user", "content": user_input})
+    
+    # Langsung tampilkan di UI supaya user tahu input diterima
     with st.chat_message("user"):
         st.markdown(user_input)
 
-    # 2. Proses pesan ASSISTANT
+    # 2. PROSES JAWABAN ASSISTANT
     with st.chat_message("assistant"):
-        st.session_state.pending_chart = None # Reset di awal
-        answer = invoke_agent(st.session_state.agent, user_input)
+        st.session_state.pending_chart = None # Reset penampung grafik
         
-        # AMBIL DATA CHART SEGERA SETELAH INVOKE
-        chart_data = st.session_state.get("pending_chart")
-        
-        # Tampilkan teks
-        st.markdown(answer.replace("CHART_READY:", ""))
-        
-        # TAMPILKAN CHART
-        if chart_data:
-            render_chart(chart_data)
-            # Simpan ke history
-            st.session_state.messages.append({
-                "role": "assistant", 
-                "content": answer, 
-                "chart": chart_data
-            })
+        with st.spinner("Menganalisis data..."):
+            answer = invoke_agent(st.session_state.agent, user_input)
+    
+            # DEBUG: Cek tipe data answer
+            st.write(f"Tipe data answer: {type(answer)}") 
+            st.write(f"Isi answer: {answer}")
+            try:
+                # Panggil Agent
+                full_response = invoke_agent(st.session_state.agent, user_input)
+                
+                # CIDUK CHART SEGERA (Detik ini juga setelah invoke selesai)
+                chart_data = st.session_state.get("pending_chart")
+                
+                # Bersihkan teks (Hapus sinyal CHART_READY agar tidak tampil di chat)
+                import re
+                clean_answer = re.sub(r"CHART_READY:.*", "", full_response).strip()
+
+                # TAMPILKAN TEKS JAWABAN
+                st.markdown(clean_answer)
+
+                # TAMPILKAN GRAFIK (Jika ada)
+                if chart_data:
+                    render_chart(chart_data)
+                
+                # 3. SIMPAN JAWABAN ASSISTANT KE HISTORY (Penting!)
+                # Kita simpan objek chart-nya juga ke dalam list messages
+                new_msg = {"role": "assistant", "content": clean_answer}
+                if chart_data:
+                    new_msg["chart"] = chart_data
+                
+                st.session_state.messages.append(new_msg)
+
+                # Reset penampung setelah berhasil disimpan ke history
+                st.session_state.pending_chart = None
+
+            except Exception as e:
+                st.error(f"Error: {e}")

@@ -186,4 +186,5 @@ def invoke_agent(agent, user_input: str) -> str:
         },
         config={"recursion_limit": 50}
     )
-    return result["messages"][-1].content
+    last_message = result["messages"][-1] 
+    return last_message.content
