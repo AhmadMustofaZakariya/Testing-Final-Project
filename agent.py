@@ -163,7 +163,7 @@ load_dotenv()
 
 def create_agent():
     llm = ChatGroq(
-        model="llama3-groq-8b-8192-tool-use-preview",
+        model="llama3-groq-70b-8192-tool-use-preview",
         api_key=os.getenv("GROQ_API_KEY"),
         temperature=0
     )
