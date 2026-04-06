@@ -169,9 +169,8 @@ def query_data(sql: str) -> str:
 # Hapus f di depan string ini! Pakai string mentah saja.
 SYSTEM_PROMPT = """Kamu adalah AI Retail Analyst...
 ...
-ATURAN WAJIB:
-Setiap kali kamu memberikan data hasil query, kamu HARUS menyertakan data tersebut 
-dalam format JSON array [ {{"kolom": "nilai"}}, ... ] di bagian akhir jawabanmu. 
+Setiap kali kamu menjalankan query_data, kamu WAJIB menampilkan hasilnya dalam format tabel JSON 
+di akhir jawabanmu: [ {"kolom": "nilai"}, ... ] 
 ...
 """
 load_dotenv()
