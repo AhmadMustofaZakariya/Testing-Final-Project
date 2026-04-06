@@ -156,23 +156,22 @@ Panduan menjawab:
 """
 load_dotenv()
 
+# BENAR
 def create_agent():
     llm = ChatGoogleGenerativeAI(
-        model="gemini-3.1-flash-lite-preview",
+        model="gemini-2.5-flash-lite-preview",
         google_api_key=os.getenv("GEMINI_API_KEY"),
         temperature=0,
-        convert_system_message_to_human=True
-        model_kwargs={
-        "tool_config": {
-            "function_calling_config": {
-                "mode": "AUTO"
+        convert_system_message_to_human=True,  # ← tambah koma
+        model_kwargs={                          # ← indentasi sejajar
+            "tool_config": {
+                "function_calling_config": {
+                    "mode": "AUTO"
+                }
             }
-        }
-    }
-)
+        }                                       # ← tutup model_kwargs
+    )                                           # ← tutup ChatGoogleGenerativeAI
     tools = [query_data, create_chart]
-    
-    # Hapus prompt parameter, tidak didukung versi ini
     agent = create_react_agent(llm, tools)
     return agent
 
