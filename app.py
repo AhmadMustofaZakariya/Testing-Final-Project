@@ -66,6 +66,17 @@ def render_chart(chart_data: dict):
     fig.update_layout(hovermode="x unified", template="plotly_white")
     st.plotly_chart(fig, use_container_width=True)
 
+# HELPER: Fungsi untuk mencari JSON di dalam teks jawaban LLM
+def extract_data_from_text(text):
+    try:
+        # Cari pola [ { ... } ] di dalam teks
+        match = re.search(r'\[\s*\{.*\}\s*\]', text, re.DOTALL)
+        if match:
+            json_str = match.group(0)
+            return json.loads(json_str)
+    except:
+        return None
+    return None
 
 # -------------------------------------------------------
 # INIT DB
@@ -154,42 +165,31 @@ if user_input:
 
     # 2. PROSES JAWABAN ASSISTANT
     with st.chat_message("assistant"):
-        st.session_state.pending_chart = None # Reset penampung grafik
-        
-        with st.spinner("Menganalisis data..."):
+        with st.spinner("Menganalisis data retail..."):
             answer = invoke_agent(st.session_state.agent, user_input)
-    
-            # DEBUG: Cek tipe data answer
-            st.write(f"Tipe data answer: {type(answer)}") 
-            st.write(f"Isi answer: {answer}")
-            try:
-                # Panggil Agent
-                full_response = invoke_agent(st.session_state.agent, user_input)
+            
+            # 1. Coba ekstrak data dari teks jawaban
+            data_list = extract_data_from_text(answer)
+            
+            # 2. Bersihkan teks dari blok JSON mentah (biar gak menuh-menuhin chat)
+            clean_answer = re.sub(r'\[\s*\{.*\}\s*\]', '', answer, flags=re.DOTALL).strip()
+            st.markdown(clean_answer)
+            
+            # 3. AUTO-CHART: Kalau ada data dan lebih dari 1 baris, tampilin grafik!
+            if data_list and len(data_list) > 1:
+                df = pd.DataFrame(data_list)
                 
-                # CIDUK CHART SEGERA (Detik ini juga setelah invoke selesai)
-                chart_data = st.session_state.get("pending_chart")
-                
-                # Bersihkan teks (Hapus sinyal CHART_READY agar tidak tampil di chat)
-                import re
-                clean_answer = re.sub(r"CHART_READY:.*", "", full_response).strip()
-
-                # TAMPILKAN TEKS JAWABAN
-                st.markdown(clean_answer)
-
-                # TAMPILKAN GRAFIK (Jika ada)
-                if chart_data:
-                    render_chart(chart_data)
-                
-                # 3. SIMPAN JAWABAN ASSISTANT KE HISTORY (Penting!)
-                # Kita simpan objek chart-nya juga ke dalam list messages
-                new_msg = {"role": "assistant", "content": clean_answer}
-                if chart_data:
-                    new_msg["chart"] = chart_data
-                
-                st.session_state.messages.append(new_msg)
-
-                # Reset penampung setelah berhasil disimpan ke history
-                st.session_state.pending_chart = None
-
-            except Exception as e:
-                st.error(f"Error: {e}")
+                # Kita buat expander biar UI tetep rapi
+                with st.expander("📊 Visualisasi Otomatis", expanded=True):
+                    # Ambil kolom pertama sebagai X, kolom kedua sebagai Y
+                    cols = df.columns.tolist()
+                    if len(cols) >= 2:
+                        fig = px.bar(df, x=cols[0], y=cols[1], title="Analisis Data")
+                        st.plotly_chart(fig, use_container_width=True)
+            
+            # 4. Simpan ke history
+            st.session_state.messages.append({
+                "role": "assistant", 
+                "content": clean_answer,
+                "data": data_list # Simpan datanya biar gak ilang pas scroll
+            })

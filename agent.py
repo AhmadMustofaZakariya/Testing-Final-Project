@@ -85,32 +85,31 @@ def query_data(sql: str) -> str:
 # tool ini hanya bertanggung jawab render chart dari
 # data yang sudah ada.
 # -------------------------------------------------------
-# DI AGENT.PY - Ganti fungsi create_chart kamu dengan ini
-# DI AGENT.PY
-@tool
-def create_chart(sql_query: str, chart_type: str, title: str, x_col: str, y_col: str) -> str:
-    """
-    Wajib dipanggil untuk menampilkan grafik. 
-    sql_query: Query SQL yang sama dengan yang kamu gunakan di query_data.
-    chart_type: 'bar', 'pie', atau 'line'.
-    title: Judul grafik.
-    x_col: Nama kolom untuk sumbu X.
-    y_col: Nama kolom untuk sumbu Y.
-    """
-    import streamlit as st
-    try:
-        # Tool ini ambil data sendiri, jadi LLM gak capek bawa JSON
-        df = run_sql(sql_query) 
+
+# @tool
+# def create_chart(sql_query: str, chart_type: str, title: str, x_col: str, y_col: str) -> str:
+#     """
+#     Wajib dipanggil untuk menampilkan grafik. 
+#     sql_query: Query SQL yang sama dengan yang kamu gunakan di query_data.
+#     chart_type: 'bar', 'pie', atau 'line'.
+#     title: Judul grafik.
+#     x_col: Nama kolom untuk sumbu X.
+#     y_col: Nama kolom untuk sumbu Y.
+#     """
+#     import streamlit as st
+#     try:
+#         # Tool ini ambil data sendiri, jadi LLM gak capek bawa JSON
+#         df = run_sql(sql_query) 
         
-        st.session_state.pending_chart = {
-            "type": chart_type,
-            "title": title,
-            "columns": [x_col, y_col],
-            "data": df.to_dict(orient="records")
-        }
-        return f"CHART_READY:{title}"
-    except Exception as e:
-        return f"Gagal: {str(e)}"
+#         st.session_state.pending_chart = {
+#             "type": chart_type,
+#             "title": title,
+#             "columns": [x_col, y_col],
+#             "data": df.to_dict(orient="records")
+#         }
+#         return f"CHART_READY:{title}"
+#     except Exception as e:
+#         return f"Gagal: {str(e)}"
 
 # -------------------------------------------------------
 # SETUP AGENT
@@ -155,6 +154,9 @@ ATURAN EMAS:
 - Kamu memiliki tool `create_chart`.
 - Kamu DILARANG menjawab 'Berikut adalah grafiknya' jika kamu belum benar-benar memanggil tool `create_chart`.
 - Jika kamu hanya menjawab dengan teks padahal user minta grafik, kamu GAGAL.
+
+Setiap kali kamu menjalankan query_data, kamu WAJIB menampilkan hasilnya dalam format tabel JSON 
+di akhir jawabanmu agar sistem bisa memprosesnya.
 
 {SCHEMA_INFO}
 Gunakan Bahasa Indonesia profesional.
