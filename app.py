@@ -12,6 +12,8 @@ import os
 import streamlit as st
 import plotly.express as px
 import pandas as pd
+import re
+import json
 from dummy_db import create_and_populate
 from agent import create_agent, invoke_agent
 
@@ -67,10 +69,6 @@ def render_chart(chart_data: dict):
     st.plotly_chart(fig, use_container_width=True)
 
 # HELPER: Fungsi untuk mencari JSON di dalam teks jawaban LLM
-import re
-import json
-import pandas as pd
-import plotly.express as px
 
 def extract_and_render_data(text):
     try:
