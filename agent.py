@@ -88,32 +88,29 @@ def query_data(sql: str) -> str:
 # DI AGENT.PY - Ganti fungsi create_chart kamu dengan ini
 # DI AGENT.PY
 @tool
-def create_chart(data_json: str, chart_type: str, title: str, x_col: str, y_col: str) -> str:
+def create_chart(sql_query: str, chart_type: str, title: str, x_col: str, y_col: str):
     """
-    WAJIB dipanggil untuk menampilkan grafik ke user.
-    data_json: hasil dari query_data (format string JSON).
-    chart_type: pilih salah satu: 'bar', 'pie', 'line'.
-    title: judul grafik.
-    x_col: nama kolom untuk sumbu X.
-    y_col: nama kolom untuk sumbu Y.
+    Gunakan ini UNTUK MENAMPILKAN GRAFIK.
+    Input adalah SQL query yang sama dengan yang kamu gunakan di query_data.
     """
     import streamlit as st
-    import json
-    
     try:
-        # Konversi string JSON kembali ke list of dict
-        data = json.loads(data_json)
+        # Biarkan Python yang ambil datanya lagi secara internal
+        df = run_sql(sql_query) 
         
-        # Simpan paket data ke session_state agar dibaca app.py
+        if df.empty:
+            return "Data kosong, tidak bisa bikin chart."
+
+        # Simpan ke state
         st.session_state.pending_chart = {
             "type": chart_type,
             "title": title,
             "columns": [x_col, y_col],
-            "data": data
+            "data": df.to_dict(orient="records")
         }
-        return f"CHART_READY:{title}" # Sinyal keberhasilan
+        return f"CHART_READY:{title}"
     except Exception as e:
-        return f"Gagal membuat chart: {str(e)}"
+        return f"Gagal: {str(e)}"
 
 # -------------------------------------------------------
 # SETUP AGENT
@@ -174,16 +171,19 @@ def create_agent():
     agent = create_react_agent(llm, tools)
     return agent
 
+# Di agent.py
 def invoke_agent(agent, user_input: str) -> str:
-    # Kita harus kirim SystemMessage setiap kali agar dia ingat ATURAN WAJIB-nya
+    # Kita paksa LLM untuk selalu sadar dia punya tools
+    # Tambahkan instruksi spesifik di pesan terakhir
+    full_input = f"{user_input}. (INGAT: Jika butuh grafik, panggil tool query_data lalu panggil create_chart. Jangan cuma jawab teks!)"
+    
     result = agent.invoke(
         {
             "messages": [
                 SystemMessage(content=SYSTEM_PROMPT), 
-                HumanMessage(content=user_input)
+                HumanMessage(content=full_input)
             ]
         },
         config={"recursion_limit": 50}
     )
-    # Ambil pesan terakhir dari assistant
     return result["messages"][-1].content

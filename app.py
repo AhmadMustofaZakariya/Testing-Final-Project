@@ -152,36 +152,21 @@ if user_input:
 
     # 2. Proses pesan ASSISTANT
     with st.chat_message("assistant"):
-        st.session_state.pending_chart = None 
+        st.session_state.pending_chart = None # Reset di awal
+        answer = invoke_agent(st.session_state.agent, user_input)
         
-        # Di app.py, cari bagian invoke_agent
-        with st.spinner("Menganalisis data..."):
-            # Pastikan pending_chart bersih sebelum mulai
-            st.session_state.pending_chart = None 
-            
-            # Jalankan agen
-            answer = invoke_agent(st.session_state.agent, user_input)
-
-            # PAKSA Streamlit untuk mengambil state terbaru
-            chart_data = st.session_state.get("pending_chart")
-
-            # Bersihkan teks CHART_READY agar tidak tampil di chat
-            clean_answer = answer
-            if "CHART_READY:" in answer:
-                import re
-                clean_answer = re.sub(r"CHART_READY:.*", "", answer).strip()
-
-            st.markdown(clean_answer)
-
-            if chart_data:
-                render_chart(chart_data)
-                # Simpan ke history agar tidak hilang saat scroll
-                st.session_state.messages.append({
-                    "role": "assistant", 
-                    "content": clean_answer, 
-                    "chart": chart_data
-                })
-                # Reset supaya tidak muncul double di chat berikutnya
-                st.session_state.pending_chart = None 
-            else:
-                st.session_state.messages.append({"role": "assistant", "content": clean_answer})
+        # AMBIL DATA CHART SEGERA SETELAH INVOKE
+        chart_data = st.session_state.get("pending_chart")
+        
+        # Tampilkan teks
+        st.markdown(answer.replace("CHART_READY:", ""))
+        
+        # TAMPILKAN CHART
+        if chart_data:
+            render_chart(chart_data)
+            # Simpan ke history
+            st.session_state.messages.append({
+                "role": "assistant", 
+                "content": answer, 
+                "chart": chart_data
+            })
