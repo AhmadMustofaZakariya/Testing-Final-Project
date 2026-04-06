@@ -182,8 +182,7 @@ CONTOH RESPON JIKA USER MINTA GRAFIK:
         "chart_type": "bar",
         "title": "Distribusi Segmen Retensi",
         "x_col": "retention_segment",
-        "y_col": "jumlah"
-    })
+        "y_col": "jumlah"})
 4. Final Answer: Berikut adalah grafik sebaran pelanggan Anda...
 """
 load_dotenv()
