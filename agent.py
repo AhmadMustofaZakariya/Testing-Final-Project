@@ -157,13 +157,22 @@ load_dotenv()
 
 def create_agent():
     llm = ChatGoogleGenerativeAI(
-        model="gemini-2-flash",  # gratis dan cepat
+        model="gemini-2.0-flash",
         google_api_key=os.getenv("GEMINI_API_KEY"),
         temperature=0
     )
     tools = [query_data, create_chart]
-    agent = create_react_agent(llm, tools, prompt=SYSTEM_PROMPT)
+    
+    # Gemini butuh format berbeda untuk system prompt
+    agent = create_react_agent(
+        llm, 
+        tools,
+        prompt=SYSTEM_PROMPT,
+        # Tambahkan ini:
+        messages_modifier=SystemMessage(content=SYSTEM_PROMPT)
+    )
     return agent
+
 
 def invoke_agent(agent, user_input: str) -> str:
     """Helper untuk invoke agent dan ambil response terakhir."""
