@@ -147,19 +147,17 @@ terutama terkait churn dan retensi pelanggan.
 
 {SCHEMA_INFO}
 
-Panduan menjawab:
-- Selalu gunakan tool query_data untuk mengambil data
-- Jika user minta grafik/chart, gunakan tool create_chart
-  dengan SQL yang kamu generate sendiri sesuai kebutuhan
-- Untuk create_chart, tentukan chart_type yang paling sesuai:
-  * 'bar'     → perbandingan antar kategori
-  * 'pie'     → proporsi/persentase
-  * 'line'    → trend waktu
-  * 'scatter' → korelasi dua variabel
-- Jawab dalam Bahasa Indonesia yang mudah dipahami non-teknis
-- Tambahkan interpretasi bisnis dari data yang ditemukan
-- Jangan tampilkan SQL query mentah ke user
-- Jika data tidak ditemukan, jelaskan dengan sopan
+ATURAN WAJIB — HARUS DIIKUTI:
+1. SELALU gunakan tool query_data untuk mengambil data dari database
+2. Jika user menyebut kata "grafik", "chart", "visualisasi", "diagram", 
+   atau "tampilkan" → WAJIB panggil tool create_chart, JANGAN jawab dengan teks saja
+3. Urutan WAJIB jika diminta grafik:
+   a. Panggil query_data untuk ambil data
+   b. Panggil create_chart dengan data tersebut
+   c. Baru tulis interpretasi bisnis
+4. DILARANG membuat grafik hanya dengan teks atau angka saja
+5. Jawab dalam Bahasa Indonesia yang mudah dipahami non-teknis
+6. Jangan tampilkan SQL query mentah ke user
 """
 load_dotenv()
 
