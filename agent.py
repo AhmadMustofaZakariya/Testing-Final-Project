@@ -86,31 +86,34 @@ def query_data(sql: str) -> str:
 # data yang sudah ada.
 # -------------------------------------------------------
 # DI AGENT.PY - Ganti fungsi create_chart kamu dengan ini
+# DI AGENT.PY
 @tool
 def create_chart(data_json: str, chart_type: str, title: str, x_col: str, y_col: str) -> str:
     """
-    Fungsi untuk menampilkan grafik, WAJIB dipanggil untuk menampilkan grafik.
-    data_json: string JSON dari hasil query_data.
-    chart_type: 'bar', 'pie', 'line', atau 'scatter'.
+    WAJIB dipanggil untuk menampilkan grafik ke user.
+    data_json: hasil dari query_data (format string JSON).
+    chart_type: pilih salah satu: 'bar', 'pie', 'line'.
     title: judul grafik.
-    x_col: nama kolom sumbu X.
-    y_col: nama kolom sumbu Y.
+    x_col: nama kolom untuk sumbu X.
+    y_col: nama kolom untuk sumbu Y.
     """
+    import streamlit as st
+    import json
+    
     try:
-        import streamlit as st
-        # Parse data JSON
+        # Konversi string JSON kembali ke list of dict
         data = json.loads(data_json)
         
-        # Simpan ke session_state dengan struktur yang diharapkan app.py
+        # Simpan paket data ke session_state agar dibaca app.py
         st.session_state.pending_chart = {
             "type": chart_type,
             "title": title,
             "columns": [x_col, y_col],
             "data": data
         }
-        return f"CHART_READY:{title}"
+        return f"CHART_READY:{title}" # Sinyal keberhasilan
     except Exception as e:
-        return f"Gagal menyiapkan chart: {str(e)}"
+        return f"Gagal membuat chart: {str(e)}"
 
 # -------------------------------------------------------
 # SETUP AGENT
@@ -124,7 +127,7 @@ PERILAKU WAJIB
 
 1. Kamu TIDAK bisa membuat gambar atau grafik sendiri.
 2. Grafik hanya bisa dibuat dengan memanggil tool `create_chart`.
-3. Jika user meminta grafik, visualisasi atau tampilkan, kamu WAJIB memanggil tool `create_chart`.
+3. Jika user meminta grafik, visualisasi, chart atau tampilkan, kamu WAJIB memanggil tool `create_chart`.
 4. Jika tidak memanggil tool, sistem akan gagal.
 
 ==============================
@@ -139,20 +142,6 @@ STEP 3 → Panggil create_chart dengan hasil yang valid
 STEP 4 → Setelah tool dipanggil, baru berikan interpretasi bisnis
 
 JANGAN berhenti sebelum memanggil create_chart.
-
-==============================
-FORMAT TOOL CALL WAJIB
-==============================
-
-Action: create_chart
-Action Input: {{
-  "data_json": "...",
-  "chart_type": "bar/pie/line/scatter",
-  "title": "...",
-  "x_col": "...",
-  "y_col": "..."}}
-
-Jika format ini tidak diikuti, sistem akan gagal.
 
 ==============================
 ATURAN SQL
