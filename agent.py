@@ -159,17 +159,11 @@ load_dotenv()
 # BENAR
 def create_agent():
     llm = ChatGoogleGenerativeAI(
-        model="gemini-3.1-flash-lite-preview",
-        google_api_key=os.getenv("GEMINI_API_KEY"),
-        temperature=0,
-        convert_system_message_to_human=True,  # ← tambah koma
-        model_kwargs={                          # ← indentasi sejajar
-            "tool_config": {
-                "function_calling_config": {
-                    "mode": "AUTO"
-                }
-            }
-        }                                       # ← tutup model_kwargs
+    model="gemini-2.0-flash",
+    google_api_key=os.getenv("GEMINI_API_KEY"),
+    temperature=0,
+    convert_system_message_to_human=True
+    # hapus model_kwargs sama sekali
     )                                           # ← tutup ChatGoogleGenerativeAI
     tools = [query_data, create_chart]
     agent = create_react_agent(llm, tools)
