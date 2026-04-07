@@ -8,5 +8,4 @@ pandas
 plotly
 streamlit
 python-dotenv
-json
-re
+
