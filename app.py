@@ -154,11 +154,16 @@ st.title("📊 AI Retail Analyst")
 st.caption("Tanyakan apapun tentang data pelanggan, churn, dan retensi")
 
 # Render history
+# --- 1. BAGIAN MENAMPILKAN HISTORY (Agar chart lama gak hilang) ---
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
-        if "chart" in msg:
-            render_chart(msg["chart"])
+        # Cek apakah ada data chart yang tersimpan di pesan ini
+        if "chart_data" in msg and msg["chart_data"]:
+            df_hist = pd.DataFrame(msg["chart_data"])
+            cols = df_hist.columns.tolist()
+            fig = px.bar(df_hist, x=cols[0], y=cols[1])
+            st.plotly_chart(fig, use_container_width=True)
 
 # Chat input
 user_input = st.chat_input("Tanyakan sesuatu tentang data pelanggan...")
@@ -177,35 +182,64 @@ if user_input:
             st.markdown(user_input)
 
         with st.chat_message("assistant"):
-            with st.spinner("Menganalisis..."):
-                try:
-                    # 1. LLM jawab pertanyaan
-                    answer = invoke_agent(st.session_state.agent, user_input)
-                    st.markdown(answer)
+            with st.spinner("Menganalisis data retail..."):
+                # 1. Panggil Agent (Llama 4 Scout)
+                full_response = invoke_agent(st.session_state.agent, user_input)
+                
+                # 2. DETEKSI DINAMIS (Cari JSON di jawaban LLM)
+                import re
+                import json
+                
+                # Regex untuk menangkap pola JSON array [ {...} ]
+                match = re.search(r'\[\s*\{.*\}\s*\]', full_response, re.DOTALL)
+                
+                data_list = None
+                clean_answer = full_response
+                
+                if match:
+                    try:
+                        json_str = match.group(0)
+                        data_list = json.loads(json_str)
+                        # Hapus JSON mentah dari chat agar UI tetap bersih & profesional
+                        clean_answer = full_response.replace(json_str, "").strip()
+                    except:
+                        pass # Jika gagal parse, biarkan saja
 
-                    # 2. Cek apakah perlu chart — app.py yang handle, bukan LLM
-                    chart_config = get_chart_config(user_input)
-                    chart_data = None
+                # 3. Tampilkan Jawaban Teks (Jawaban Llama 4 yang sudah bersih)
+                st.markdown(clean_answer)
 
-                    if chart_config:
-                        df = run_sql(chart_config["sql"])
-                        if not df.empty:
-                            chart_data = {
-                                "type" : chart_config["type"],
-                                "title": chart_config["title"],
-                                "x"    : chart_config["x"],
-                                "y"    : chart_config["y"],
-                                "data" : df.to_dict(orient="records")
-                            }
-                            render_chart(chart_data)
+                # 4. TAMPILKAN GRAFIK
+                # Cek dulu: Apakah ini pertanyaan yang ada di CHART_CONFIG (Cara Claude)?
+                chart_config = get_chart_config(user_input)
+                
+                if chart_config:
+                    # Jika ada di config Claude, jalankan cara Claude
+                    df_c = run_sql(chart_config["sql"])
+                    if not df_c.empty:
+                        render_chart({
+                            "type": chart_config["type"],
+                            "title": chart_config["title"],
+                            "x": chart_config["x"],
+                            "y": chart_config["y"],
+                            "data": df_c.to_dict(orient="records")
+                        })
+                elif data_list and len(data_list) > 1:
+                    # Jika GAK ADA di config Claude, tapi LLM ngasih data JSON (Cara Dinamis)
+                    df_d = pd.DataFrame(data_list)
+                    cols = df_d.columns.tolist()
+                    
+                    with st.expander("📊 Analisis Visual Otomatis", expanded=True):
+                        # Pastikan kolom kedua adalah angka
+                        df_d[cols[1]] = pd.to_numeric(df_d[cols[1]], errors='coerce')
+                        
+                        fig = px.bar(df_d, x=cols[0], y=cols[1], 
+                                    title=f"Trend {cols[1]} per {cols[0]}",
+                                    color_discrete_sequence=['#00CC96'])
+                        st.plotly_chart(fig, use_container_width=True)
 
-                    # 3. Simpan ke history
-                    saved = {"role": "assistant", "content": answer}
-                    if chart_data:
-                        saved["chart"] = chart_data
-                    st.session_state.messages.append(saved)
-
-                except Exception as e:
-                    err = f"Terjadi error: {str(e)}"
-                    st.error(err)
-                    st.session_state.messages.append({"role": "assistant", "content": err})
+                # 5. Simpan ke History (PENTING agar grafik tidak hilang saat scroll)
+                st.session_state.messages.append({
+                    "role": "assistant", 
+                    "content": clean_answer,
+                    "data": data_list # Simpan datanya di sini
+                })
