@@ -9,6 +9,8 @@ import plotly.express as px
 import pandas as pd
 from dummy_db import create_and_populate
 from agent import create_agent, invoke_agent, run_sql
+import re
+import json
 
 st.set_page_config(page_title="AI Retail Analyst", page_icon="📊", layout="wide")
 
