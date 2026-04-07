@@ -9,8 +9,6 @@ import plotly.express as px
 import pandas as pd
 from dummy_db import create_and_populate
 from agent import create_agent, invoke_agent, run_sql
-import re
-import json
 
 st.set_page_config(page_title="AI Retail Analyst", page_icon="📊", layout="wide")
 
@@ -180,43 +178,34 @@ if user_input:
 
         with st.chat_message("assistant"):
             with st.spinner("Menganalisis..."):
-                # 1. Jalankan Agent
-                full_res = invoke_agent(st.session_state.agent, user_input)
-                
-                # 2. Cek Template Claude (Prioritas Utama)
-                chart_config = get_chart_config(user_input)
-                data_to_save = None
-                
-                if chart_config:
-                    df_sql = run_sql(chart_config["sql"])
-                    if not df_sql.empty:
-                        data_to_save = df_sql.to_dict(orient="records")
-                        st.markdown(full_res) # Tampilkan jawaban LLM
-                        fig = px.bar(df_sql, x=chart_config["x"], y=chart_config["y"], title=chart_config["title"])
-                        st.plotly_chart(fig, use_container_width=True)
-                else:
-                    # 3. Jika bukan template, cari JSON Dinamis dari LLM
-                    match = re.search(r'\[\s*\{.*\}\s*\]', full_res, re.DOTALL)
-                    clean_text = full_res
-                    if match:
-                        try:
-                            json_str = match.group(0)
-                            data_to_save = json.loads(json_str)
-                            clean_text = full_res.replace(json_str, "").strip()
-                        except: pass
-                    
-                    st.markdown(clean_text)
-                    
-                    if data_to_save and len(data_to_save) > 1:
-                        df_dyn = pd.DataFrame(data_to_save)
-                        cols = df_dyn.columns.tolist()
-                        with st.expander("📊 Analisis Visual Otomatis", expanded=True):
-                            fig = px.bar(df_dyn, x=cols[0], y=cols[1])
-                            st.plotly_chart(fig, use_container_width=True)
+                try:
+                    # 1. LLM jawab pertanyaan
+                    answer = invoke_agent(st.session_state.agent, user_input)
+                    st.markdown(answer)
 
-                # 4. Simpan ke History agar tidak hilang
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": full_res if not match else clean_text,
-                    "chart_data": data_to_save
-                })
+                    # 2. Cek apakah perlu chart — app.py yang handle, bukan LLM
+                    chart_config = get_chart_config(user_input)
+                    chart_data = None
+
+                    if chart_config:
+                        df = run_sql(chart_config["sql"])
+                        if not df.empty:
+                            chart_data = {
+                                "type" : chart_config["type"],
+                                "title": chart_config["title"],
+                                "x"    : chart_config["x"],
+                                "y"    : chart_config["y"],
+                                "data" : df.to_dict(orient="records")
+                            }
+                            render_chart(chart_data)
+
+                    # 3. Simpan ke history
+                    saved = {"role": "assistant", "content": answer}
+                    if chart_data:
+                        saved["chart"] = chart_data
+                    st.session_state.messages.append(saved)
+
+                except Exception as e:
+                    err = f"Terjadi error: {str(e)}"
+                    st.error(err)
+                    st.session_state.messages.append({"role": "assistant", "content": err})
