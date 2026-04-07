@@ -157,20 +157,16 @@ st.caption("Tanyakan apapun tentang data pelanggan, churn, dan retensi")
 
 # Render history
 # --- 1. BAGIAN MENAMPILKAN HISTORY (Agar chart lama gak hilang) ---
-# 1. TAMPILKAN HISTORY CHAT & GRAFIK LAMA
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
-        
-        # CEK: Jika pesan ini punya data chart, gambar ulang!
-        if "chart_data" in msg and msg["chart_data"]:
-            df_hist = pd.DataFrame(msg["chart_data"])
+        # Jika ada data chart tersimpan, gambar lagi!
+        if "data_chart" in msg and msg["data_chart"]:
+            df_hist = pd.DataFrame(msg["data_chart"])
             cols = df_hist.columns.tolist()
-            if len(cols) >= 2:
-                # Paksa numerik agar tidak error saat rerun
-                df_hist[cols[1]] = pd.to_numeric(df_hist[cols[1]], errors='coerce')
-                fig = px.bar(df_hist, x=cols[0], y=cols[1], title="Analisis Data")
-                st.plotly_chart(fig, use_container_width=True)
+            # Render tanpa expander agar history terlihat padat dan rapi
+            fig = px.bar(df_hist, x=cols[0], y=cols[1], color_discrete_sequence=['#00CC96'])
+            st.plotly_chart(fig, use_container_width=True)
 
 # Chat input
 user_input = st.chat_input("Tanyakan sesuatu tentang data pelanggan...")
@@ -181,45 +177,40 @@ if "pending_question" in st.session_state:
 # PROCESS
 # -------------------------------------------------------
 if user_input:
-    if not st.session_state.agent:
-        st.warning("Agent belum siap, cek API key.")
-    else:
-        st.session_state.messages.append({"role": "user", "content": user_input})
-        with st.chat_message("user"):
-            st.markdown(user_input)
+    st.session_state.messages.append({"role": "user", "content": user_input})
+    with st.chat_message("user"):
+        st.markdown(user_input)
 
-        with st.chat_message("assistant"):
-            with st.spinner("Menganalisis..."):
-                answer = invoke_agent(st.session_state.agent, user_input)
-                
-                # --- LOGIKA DETEKSI DINAMIS ---
-                match = re.search(r'\[\s*\{.*\}\s*\]', answer, re.DOTALL)
-                data_list = None
-                clean_answer = answer
-                
-                if match:
-                    try:
-                        json_str = match.group(0)
-                        data_list = json.loads(json_str)
-                        clean_answer = answer.replace(json_str, "").strip()
-                    except:
-                        pass
-                
-                # Tampilkan teks jawaban
-                st.markdown(clean_answer)
-                
-                # --- TAMPILKAN CHART BARU ---
-                if data_list and len(data_list) > 1:
-                    df_new = pd.DataFrame(data_list)
-                    cols = df_new.columns.tolist()
-                    with st.expander("📊 Visualisasi Otomatis", expanded=True):
-                        df_new[cols[1]] = pd.to_numeric(df_new[cols[1]], errors='coerce')
-                        fig = px.bar(df_new, x=cols[0], y=cols[1])
-                        st.plotly_chart(fig, use_container_width=True)
-                
-                # --- SIMPAN KE HISTORY (Ini yang bikin chart gak hilang) ---
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": clean_answer,
-                    "chart_data": data_list # <--- Data ini yang akan dibaca oleh Loop History di atas
-                })
+    with st.chat_message("assistant"):
+        with st.spinner("Sedang berpikir..."):
+            full_res = invoke_agent(st.session_state.agent, user_input)
+            
+            # Deteksi JSON array di jawaban
+            match = re.search(r'\[\s*\{.*\}\s*\]', full_res, re.DOTALL)
+            data_list = None
+            clean_text = full_res
+            
+            if match:
+                try:
+                    json_str = match.group(0)
+                    data_list = json.loads(json_str)
+                    clean_text = full_res.replace(json_str, "").strip()
+                except: pass
+
+            st.markdown(clean_text)
+            
+            # Tampilkan Grafik Baru
+            if data_list and len(data_list) > 1:
+                df_new = pd.DataFrame(data_list)
+                cols = df_new.columns.tolist()
+                with st.expander("📊 Analisis Visual", expanded=True):
+                    df_new[cols[1]] = pd.to_numeric(df_new[cols[1]], errors='coerce')
+                    fig = px.bar(df_new, x=cols[0], y=cols[1])
+                    st.plotly_chart(fig, use_container_width=True)
+            
+            # SIMPAN KE STATE (Kunci agar tidak hilang!)
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": clean_text,
+                "data_chart": data_list # Simpan di sini!
+            })
